@@ -37,7 +37,7 @@ export function PlotlyChart({ network, metric }: PlotlyChartProps) {
   const [metricsData, setMetricsData] = useState<Record<string, any[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [timeRange, setTimeRange] = useState<"1Y" | "6M" | "3M" | "ALL">("1Y")
+  const [timeRange, setTimeRange] = useState<"7D" | "30D" | "3M" | "6M" | "1Y" | "ALL">("30D")
   const [activeMetric, setActiveMetric] = useState<string>("")
   const [chartData, setChartData] = useState<any[]>([])
 
@@ -163,12 +163,26 @@ export function PlotlyChart({ network, metric }: PlotlyChartProps) {
     const now = new Date()
     
     // Filter by time range
-    if (range === "1Y") {
-      const oneYearAgo = new Date()
-      oneYearAgo.setFullYear(now.getFullYear() - 1)
+    if (range === "7D") {
+      const sevenDaysAgo = new Date()
+      sevenDaysAgo.setDate(now.getDate() - 7)
       filteredData = data.filter(item => {
         const itemDate = new Date(item.date)
-        return itemDate >= oneYearAgo
+        return itemDate >= sevenDaysAgo
+      })
+    } else if (range === "30D") {
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(now.getDate() - 30)
+      filteredData = data.filter(item => {
+        const itemDate = new Date(item.date)
+        return itemDate >= thirtyDaysAgo
+      })
+    } else if (range === "3M") {
+      const threeMonthsAgo = new Date()
+      threeMonthsAgo.setMonth(now.getMonth() - 3)
+      filteredData = data.filter(item => {
+        const itemDate = new Date(item.date)
+        return itemDate >= threeMonthsAgo
       })
     } else if (range === "6M") {
       const sixMonthsAgo = new Date()
@@ -177,12 +191,12 @@ export function PlotlyChart({ network, metric }: PlotlyChartProps) {
         const itemDate = new Date(item.date)
         return itemDate >= sixMonthsAgo
       })
-    } else if (range === "3M") {
-      const threeMonthsAgo = new Date()
-      threeMonthsAgo.setMonth(now.getMonth() - 3)
+    } else if (range === "1Y") {
+      const oneYearAgo = new Date()
+      oneYearAgo.setFullYear(now.getFullYear() - 1)
       filteredData = data.filter(item => {
         const itemDate = new Date(item.date)
-        return itemDate >= threeMonthsAgo
+        return itemDate >= oneYearAgo
       })
     }
     
@@ -277,12 +291,12 @@ export function PlotlyChart({ network, metric }: PlotlyChartProps) {
         
         {/* Time range toggle buttons with network-specific colors */}
         <div className="flex space-x-1">
-          {["1Y", "6M", "3M", "ALL"].map((range) => (
+          {["7D", "30D", "3M", "6M", "1Y", "ALL"].map((range) => (
             <Button
               key={range}
               size="sm"
               variant={timeRange === range ? "default" : "outline"}
-              onClick={() => setTimeRange(range as "1Y" | "6M" | "3M" | "ALL")}
+              onClick={() => setTimeRange(range as "7D" | "30D" | "3M" | "6M" | "1Y" | "ALL")}
               className="text-xs"
               style={{
                 backgroundColor: timeRange === range ? getNetworkColors(network)[0] : '',

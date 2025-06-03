@@ -5,32 +5,26 @@ import { ChevronDown, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { supabase, isSupabaseConfigured } from "@/lib/supabase"
 
-interface StablecoinMetricsChartProps {
+interface StablecoinBridgingChartProps {
   network: string;
-  metric?: "total" | "bridged";
   title?: string;
 }
 
 interface StablecoinData {
   date: string;
-  total_circulating_usd_all: number;
-  total_circulating_usd_usdt: number;
-  total_circulating_usd_usdc: number;
   total_bridged_to_usd_all: number;
   total_bridged_to_usd_usdt: number;
   total_bridged_to_usd_usdc: number;
 }
 
-export function StablecoinMetricsChart({ 
+export function StablecoinBridgingChart({ 
   network, 
-  metric = "total",
-  title
-}: StablecoinMetricsChartProps) {
+  title = "Total Bridged Stablecoins to Avalanche"
+}: StablecoinBridgingChartProps) {
   const [timeRange, setTimeRange] = useState('1Y')
   const [stablecoinData, setStablecoinData] = useState<StablecoinData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [chartType, setChartType] = useState<"total" | "bridged">(metric)
   const chartRef = useRef<HTMLDivElement>(null)
   
   useEffect(() => {
@@ -74,14 +68,11 @@ export function StablecoinMetricsChart({
         // Format the date as YYYY-MM-DD
         const formattedFilterDate = filterDate.toISOString().split('T')[0]
         
-        // Query the stablecoins table directly
+        // Query the stablecoins table for bridging data only
         const { data, error } = await supabase
           .from('avalanche_stablecoins')
           .select(`
             date,
-            total_circulating_usd_all,
-            total_circulating_usd_usdt,
-            total_circulating_usd_usdc,
             total_bridged_to_usd_all,
             total_bridged_to_usd_usdt,
             total_bridged_to_usd_usdc
@@ -90,14 +81,14 @@ export function StablecoinMetricsChart({
           .order('date', { ascending: true })
         
         if (error) {
-          throw new Error(`Error fetching stablecoin data: ${error.message}`)
+          throw new Error(`Error fetching stablecoin bridging data: ${error.message}`)
         }
         
         if (data) {
           setStablecoinData(data as StablecoinData[])
         }
       } catch (err) {
-        console.error('Error fetching stablecoin data:', err)
+        console.error('Error fetching stablecoin bridging data:', err)
         setError(err instanceof Error ? err.message : 'Unknown error occurred')
       } finally {
         setLoading(false)
@@ -123,67 +114,10 @@ export function StablecoinMetricsChart({
     }
   }
   
-  // Get title based on chart type
-  const getChartTitle = (): string => {
-    if (title) return title
-    
-    switch (chartType) {
-      case "total":
-        return "Total Circulating Stablecoins on Avalanche"
-      case "bridged":
-        return "Total Bridged Stablecoins to Avalanche"
-      default:
-        return "Stablecoin Metrics"
-    }
-  }
-  
-  // Create Plotly chart data
+  // Create Plotly chart data for bridging stats only
   const createChartData = () => {
-    // Base trace configuration
-    const traces = []
-    
-    if (chartType === "total") {
-      // Add total circulating traces
-      traces.push({
-        x: stablecoinData.map(d => d.date),
-        y: stablecoinData.map(d => d.total_circulating_usd_all),
-        type: 'scatter',
-        mode: 'lines',
-        name: 'Total Circulating',
-        line: {
-          color: '#E84142',
-          width: 3
-        }
-      })
-      
-      traces.push({
-        x: stablecoinData.map(d => d.date),
-        y: stablecoinData.map(d => d.total_circulating_usd_usdt),
-        type: 'scatter',
-        mode: 'lines',
-        name: 'USDT',
-        line: {
-          color: '#26A17B',
-          width: 2
-        }
-      })
-      
-      traces.push({
-        x: stablecoinData.map(d => d.date),
-        y: stablecoinData.map(d => d.total_circulating_usd_usdc),
-        type: 'scatter',
-        mode: 'lines',
-        name: 'USDC',
-        line: {
-          color: '#2775CA',
-          width: 2
-        }
-      })
-    }
-    
-    if (chartType === "bridged") {
-      // Add bridged traces
-      traces.push({
+    const traces = [
+      {
         x: stablecoinData.map(d => d.date),
         y: stablecoinData.map(d => d.total_bridged_to_usd_all),
         type: 'scatter',
@@ -193,37 +127,35 @@ export function StablecoinMetricsChart({
           color: '#E84142',
           width: 3
         }
-      })
-      
-      traces.push({
+      },
+      {
         x: stablecoinData.map(d => d.date),
         y: stablecoinData.map(d => d.total_bridged_to_usd_usdt),
         type: 'scatter',
         mode: 'lines',
-        name: 'USDT Bridged',
+        name: 'Bridged USDT',
         line: {
           color: '#26A17B',
           width: 2
         }
-      })
-      
-      traces.push({
+      },
+      {
         x: stablecoinData.map(d => d.date),
         y: stablecoinData.map(d => d.total_bridged_to_usd_usdc),
         type: 'scatter',
         mode: 'lines',
-        name: 'USDC Bridged',
+        name: 'Bridged USDC',
         line: {
           color: '#2775CA',
           width: 2
         }
-      })
-    }
+      }
+    ]
     
     return {
       data: traces,
       layout: {
-        title: getChartTitle(),
+        title: title,
         showlegend: true,
         legend: {
           orientation: 'h',
@@ -284,26 +216,21 @@ export function StablecoinMetricsChart({
         })
       }
     }
-  }, [loading, error, stablecoinData, chartType, timeRange])
+  }, [loading, error, stablecoinData, timeRange])
   
   // Handle time range change
   const handleTimeRangeChange = (range: string) => {
     setTimeRange(range)
-  }
-  
-  // Handle chart type change
-  const handleChartTypeChange = (type: "total" | "bridged") => {
-    setChartType(type)
   }
 
   if (loading) {
     return (
       <div className="border rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">Stablecoin Metrics</h2>
+          <h2 className="text-lg font-bold">Stablecoin Bridging Metrics</h2>
         </div>
         <div className="h-[350px] flex items-center justify-center">
-          <div className="animate-pulse text-gray-400">Loading stablecoin data...</div>
+          <div className="animate-pulse text-gray-400">Loading bridging data...</div>
         </div>
       </div>
     )
@@ -313,7 +240,7 @@ export function StablecoinMetricsChart({
     return (
       <div className="border rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">Stablecoin Metrics</h2>
+          <h2 className="text-lg font-bold">Stablecoin Bridging Metrics</h2>
         </div>
         <div className="h-[350px] flex items-center justify-center">
           <div className="text-red-500">{error}</div>
@@ -326,10 +253,10 @@ export function StablecoinMetricsChart({
     return (
       <div className="border rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">Stablecoin Metrics</h2>
+          <h2 className="text-lg font-bold">Stablecoin Bridging Metrics</h2>
         </div>
         <div className="h-[350px] flex items-center justify-center">
-          <div className="text-gray-500">Stablecoin metrics are only available for Avalanche.</div>
+          <div className="text-gray-500">Stablecoin bridging metrics are only available for Avalanche.</div>
         </div>
       </div>
     )
@@ -339,10 +266,10 @@ export function StablecoinMetricsChart({
     return (
       <div className="border rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">Stablecoin Metrics</h2>
+          <h2 className="text-lg font-bold">Stablecoin Bridging Metrics</h2>
         </div>
         <div className="h-[350px] flex items-center justify-center">
-          <div className="text-gray-500">No stablecoin data available.</div>
+          <div className="text-gray-500">No bridging data available.</div>
         </div>
       </div>
     )
@@ -354,29 +281,9 @@ export function StablecoinMetricsChart({
   return (
     <div className="border rounded-lg p-6">
       <div className="flex flex-wrap items-center justify-between mb-4">
-        <h2 className="text-lg font-bold">{getChartTitle()}</h2>
+        <h2 className="text-lg font-bold">{title}</h2>
         
         <div className="flex items-center space-x-2 mt-2 sm:mt-0">
-          {/* Chart Type Selector */}
-          <div className="flex space-x-1">
-            <Button 
-              variant={chartType === "total" ? "default" : "outline"} 
-              size="sm"
-              onClick={() => handleChartTypeChange("total")}
-              className="text-xs"
-            >
-              Circulating
-            </Button>
-            <Button 
-              variant={chartType === "bridged" ? "default" : "outline"} 
-              size="sm"
-              onClick={() => handleChartTypeChange("bridged")}
-              className="text-xs"
-            >
-              Bridged
-            </Button>
-          </div>
-          
           {/* Time Range Selector */}
           <div className="flex space-x-1">
             <Button 
@@ -385,7 +292,7 @@ export function StablecoinMetricsChart({
               onClick={() => handleTimeRangeChange("1M")}
               className="text-xs"
             >
-              30D
+              1M
             </Button>
             <Button 
               variant={timeRange === "3M" ? "default" : "outline"} 
@@ -419,30 +326,24 @@ export function StablecoinMetricsChart({
         <div ref={chartRef} className="w-full h-full"></div>
       </div>
       
-      {/* Current Values Display */}
-      <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-gray-50 p-3 rounded-md">
-          <div className="text-sm text-gray-500">Total Circulating</div>
-          <div className="text-lg font-bold">
-            {formatValue(latestData?.total_circulating_usd_all || 0)}
-          </div>
-        </div>
-        <div className="bg-gray-50 p-3 rounded-md">
-          <div className="text-sm text-gray-500">USDT Circulating</div>
-          <div className="text-lg font-bold">
-            {formatValue(latestData?.total_circulating_usd_usdt || 0)}
-          </div>
-        </div>
-        <div className="bg-gray-50 p-3 rounded-md">
-          <div className="text-sm text-gray-500">USDC Circulating</div>
-          <div className="text-lg font-bold">
-            {formatValue(latestData?.total_circulating_usd_usdc || 0)}
-          </div>
-        </div>
+      {/* Current Values Display - Bridging Stats Only */}
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gray-50 p-3 rounded-md">
           <div className="text-sm text-gray-500">Total Bridged</div>
           <div className="text-lg font-bold">
             {formatValue(latestData?.total_bridged_to_usd_all || 0)}
+          </div>
+        </div>
+        <div className="bg-gray-50 p-3 rounded-md">
+          <div className="text-sm text-gray-500">Bridged USDT</div>
+          <div className="text-lg font-bold">
+            {formatValue(latestData?.total_bridged_to_usd_usdt || 0)}
+          </div>
+        </div>
+        <div className="bg-gray-50 p-3 rounded-md">
+          <div className="text-sm text-gray-500">Bridged USDC</div>
+          <div className="text-lg font-bold">
+            {formatValue(latestData?.total_bridged_to_usd_usdc || 0)}
           </div>
         </div>
       </div>

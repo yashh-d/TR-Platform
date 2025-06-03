@@ -17,6 +17,45 @@ export function DAppsCategoryChart({ network }: DAppsCategoryChartProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Function to capitalize category names professionally
+  const capitalizeCategory = (category: string): string => {
+    // Handle specific cases for better readability
+    const specialCases: Record<string, string> = {
+      'defi': 'DeFi',
+      'nft': 'NFT',
+      'dex': 'DEX',
+      'dexes': 'DEXes',
+      'dao': 'DAO',
+      'yield': 'Yield Farming',
+      'high-risk': 'High Risk',
+      'marketplaces': 'Marketplaces',
+      'collectibles': 'Collectibles',
+      'other': 'Other',
+      'gambling': 'Gambling',
+      'social': 'Social',
+      'exchanges': 'Exchanges',
+      'games': 'Games',
+      'gaming': 'Gaming'
+    }
+
+    const lowerCategory = category.toLowerCase().trim()
+    
+    // Check if it's a special case
+    if (specialCases[lowerCategory]) {
+      return specialCases[lowerCategory]
+    }
+    
+    // Default capitalization: capitalize first letter of each word
+    return category
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  }
+
   // Use a diverse color palette instead of network-specific colors
   const getDiverseColors = (): string[] => {
     return [
@@ -70,9 +109,9 @@ export function DAppsCategoryChart({ network }: DAppsCategoryChartProps) {
           if (!item.categories) return
           
           // Split categories by comma and trim whitespace
-          const categories = item.categories.split(',').map(cat => cat.trim())
+          const categories = item.categories.split(',').map((cat: string) => cat.trim())
           
-          categories.forEach(category => {
+          categories.forEach((category: string) => {
             if (category) {
               categoryMap.set(category, (categoryMap.get(category) || 0) + 1)
             }
@@ -114,7 +153,7 @@ export function DAppsCategoryChart({ network }: DAppsCategoryChartProps) {
         {
           type: 'pie',
           values: categoryData.map(d => d.count),
-          labels: categoryData.map(d => d.category),
+          labels: categoryData.map(d => capitalizeCategory(d.category)),
           textinfo: 'label',
           hoverinfo: 'label+percent',
           hovertemplate: '%{label}: %{percent}<extra></extra>',
@@ -158,7 +197,7 @@ export function DAppsCategoryChart({ network }: DAppsCategoryChartProps) {
 
   if (loading) {
     return (
-      <div className="border rounded-lg p-6 h-[300px] flex items-center justify-center">
+      <div className="border rounded-lg p-6 h-[500px] flex items-center justify-center">
         <div className="animate-pulse space-y-4">
           <div className="h-4 bg-gray-200 rounded w-1/4 mx-auto"></div>
           <div className="h-32 w-32 bg-gray-200 rounded-full mx-auto"></div>
@@ -169,7 +208,7 @@ export function DAppsCategoryChart({ network }: DAppsCategoryChartProps) {
 
   if (error) {
     return (
-      <div className="border rounded-lg p-6 h-[300px] flex items-center justify-center">
+      <div className="border rounded-lg p-6 h-[500px] flex items-center justify-center">
         <div className="text-center text-red-500">
           <p>{error}</p>
         </div>
@@ -179,7 +218,7 @@ export function DAppsCategoryChart({ network }: DAppsCategoryChartProps) {
 
   if (network.toLowerCase() !== "avalanche") {
     return (
-      <div className="border rounded-lg p-6 h-[300px] flex items-center justify-center">
+      <div className="border rounded-lg p-6 h-[500px] flex items-center justify-center">
         <div className="text-center text-gray-500">
           <p>Category breakdown is only available for Avalanche.</p>
         </div>
@@ -189,7 +228,7 @@ export function DAppsCategoryChart({ network }: DAppsCategoryChartProps) {
 
   if (!categoryData.length) {
     return (
-      <div className="border rounded-lg p-6 h-[300px] flex items-center justify-center">
+      <div className="border rounded-lg p-6 h-[500px] flex items-center justify-center">
         <div className="text-center text-gray-500">
           <p>No category data available.</p>
         </div>
@@ -201,7 +240,7 @@ export function DAppsCategoryChart({ network }: DAppsCategoryChartProps) {
 
   return (
     <div className="border rounded-lg p-6">
-      <div className="h-[300px] w-full">
+      <div className="h-[500px] w-full">
         {typeof window !== 'undefined' && (
           <div
             ref={(el) => {

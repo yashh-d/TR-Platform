@@ -103,8 +103,10 @@ export function AvalancheNetworkStats({ network, colors }: NetworkStatsProps) {
       return `${(num / 1000000000).toFixed(2)}B AVAX`
     } else if (num >= 1000000) {
       return `${(num / 1000000).toFixed(2)}M AVAX`
+    } else if (num >= 1000) {
+      return `${(num / 1000).toFixed(2)}K AVAX`
     } else {
-      return `${num.toLocaleString()} AVAX`
+      return `${num.toLocaleString(undefined, { maximumFractionDigits: 4 })} AVAX`
     }
   }
 
@@ -132,8 +134,8 @@ export function AvalancheNetworkStats({ network, colors }: NetworkStatsProps) {
       
       <BentoCardSimple
         title="Total Staked"
-        value={formatAVAX(stats?.validatorTotalStaked)}
-        subtitle={`${formatAVAX(stats?.delegatorTotalStaked)} delegated`}
+        value={formatAVAX(((stats?.validatorTotalStaked || 0) + (stats?.delegatorTotalStaked || 0)) / Math.pow(10, 12))}
+        subtitle={`${formatAVAX((stats?.delegatorTotalStaked || 0) / Math.pow(10, 12))} delegated`}
         colors={colors}
         loading={loading}
         error={error}
@@ -142,7 +144,7 @@ export function AvalancheNetworkStats({ network, colors }: NetworkStatsProps) {
       
       <BentoCardSimple
         title="Annual Staking Reward"
-        value={formatAVAX(stats?.estimatedAnnualStakingReward)}
+        value={formatPercent((stats?.estimatedAnnualStakingReward || 0) / Math.pow(10, 15))}
         subtitle="Estimated APR"
         colors={colors}
         loading={loading}

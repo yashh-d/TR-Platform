@@ -1,9 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
-  Search,
-  ChevronDown,
   ChevronRight,
   ArrowUpRight,
   Download,
@@ -53,6 +51,37 @@ import { TopProtocolsTVLChart } from "@/components/top-protocols-tvl-chart"
 import { BitcoinMetricsChart } from "@/components/bitcoin-metrics-chart"
 import { EthereumMetricsChart } from "@/components/ethereum-metrics-chart"
 import { SubnetCountCard } from "@/components/subnet-count-card"
+import { StablecoinBridgingChart } from "@/components/stablecoin-bridging-chart"
+import { StablecoinStatsCards } from "@/components/stablecoin-stats-cards"
+import { OverviewStablecoinCards } from "@/components/overview-stablecoin-cards"
+import { TVLChart } from "@/components/tvl-chart"
+import { PriceChart } from "@/components/price-chart"
+import { OverviewMetricsCards } from "@/components/overview-metrics-cards"
+import { OverviewNetworkMetricsCards } from "@/components/overview-network-metrics-cards"
+import { ConsolidatedMetricsChart } from "@/components/consolidated-metrics-chart"
+import { AvaxBurnChart } from "@/components/avax-burn-chart"
+import { AvalancheDeFiTable } from "@/components/avalanche-defi-table"
+import { StakingDistributionPieChart } from "@/components/staking-distribution-pie-chart"
+import { ContractsDeployersChart } from "@/components/contracts-deployers-chart"
+import { GasFeesChart } from "@/components/gas-fees-chart"
+import { TpsGpsChart } from "@/components/tps-gps-chart"
+import { TransactionsChart } from "@/components/transactions-chart"
+import { AddressesChart } from "@/components/addresses-chart"
+import { CChainMetricsChart } from "@/components/cchain-metrics-chart"
+import { SubnetMetricsTable } from "@/components/subnet-metrics-table"
+import { supabase } from "@/lib/supabase"
+import { BitcoinNetworkActivityChart } from "@/components/bitcoin-network-activity-chart"
+import { BitcoinMiningMetricsChart } from "@/components/bitcoin-mining-metrics-chart"
+import { BitcoinMarketMetricsChart } from "@/components/bitcoin-market-metrics-chart"
+import { BitcoinOverviewCards } from "@/components/bitcoin-overview-cards"
+import { EthereumFinancialMetricsChart } from "@/components/ethereum-financial-metrics-chart"
+import { EthereumSupplyMetricsChart } from "@/components/ethereum-supply-metrics-chart"
+import { EthereumStakingMetricsChart } from "@/components/ethereum-staking-metrics-chart"
+import { EthereumNetworkActivityChart } from "@/components/ethereum-network-activity-chart"
+import { DexVolumePieChart } from "@/components/dex-volume-pie-chart"
+import { EthereumStablecoinStatsCards } from "@/components/ethereum-stablecoin-stats-cards"
+import { EthereumStablecoinMetricsChart } from "@/components/ethereum-stablecoin-metrics-chart"
+import { EthereumStablecoinBridgingChart } from "@/components/ethereum-stablecoin-bridging-chart"
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("avalanche")
@@ -60,7 +89,7 @@ export default function Dashboard() {
 
   // Get subcategory tabs based on active blockchain
   const getSubcategoryTabs = (network: string) => {
-    const commonTabs = ["Overview", "Network", "L1s", "dApps + Protocols", "Stablecoins", "Institutions + RWAs"]
+    const commonTabs = ["Overview", "Network", "L1s", "DeFi", "dApps + Protocols", "Stablecoins", "Institutions + RWAs"]
     
     // Add Governance tab specifically for Avalanche
     if (network === "avalanche") {
@@ -97,16 +126,97 @@ export default function Dashboard() {
       case "ethereum":
         return ["#627EEA", "#8A9EF5", "#B6C1F2"]
       case "solana":
-        return ["#14F195", "#00C4A2", "#9945FF"]
+        return ["#9945FF", "#14F195", "#C87FFF", "#8B5CF6", "#06FFA5"]
       case "avalanche":
         return ["#E84142", "#FF6B6B", "#FF9B9B"]
       case "polygon":
         return ["#8247E5", "#A277FF", "#C4A7FF"]
       case "core":
-        return ["#FF7700", "#FF9500", "#FFB700"] // Bright orange palette
+        return ["#FF7700", "#FF9500", "#FFB700"]
       default:
         return ["#3B82F6", "#60A5FA", "#93C5FD"]
     }
+  }
+
+  // Dynamic DEX Volume Card Component
+  function DexVolumeCard({ network, colors }: { network: string, colors: string[] }) {
+    const [volume, setVolume] = useState<number | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+
+    useEffect(() => {
+      async function fetchLatestDexVolume() {
+        if (network.toLowerCase() !== "avalanche") {
+          setLoading(false)
+          return
+        }
+
+        try {
+          // Get the latest date's total volume from all DEXs
+          const { data, error } = await supabase
+            .from('avalanche_dex_volumes')
+            .select('date, volume')
+            .order('date', { ascending: false })
+            .limit(100) // Get recent data to sum up for latest date
+
+          if (error) throw error
+
+          if (data && data.length > 0) {
+            // Get the most recent date
+            const latestDate = data[0].date
+            
+            // Sum all volumes for the latest date
+            const latestDayVolumes = data.filter(item => item.date === latestDate)
+            const totalVolume = latestDayVolumes.reduce((sum, item) => sum + Number(item.volume), 0)
+            
+            setVolume(totalVolume)
+          }
+        } catch (err) {
+          console.error('Error fetching DEX volume:', err)
+          setError('Failed to load DEX volume')
+        } finally {
+          setLoading(false)
+        }
+      }
+
+      fetchLatestDexVolume()
+    }, [network])
+
+    const formatVolume = (volume: number): string => {
+      if (volume >= 1000000000) {
+        return `$${(volume / 1000000000).toFixed(2)}B`
+      } else if (volume >= 1000000) {
+        return `$${(volume / 1000000).toFixed(2)}M`
+      } else if (volume >= 1000) {
+        return `$${(volume / 1000).toFixed(2)}K`
+      } else {
+        return `$${volume.toFixed(2)}`
+      }
+    }
+
+    if (network.toLowerCase() !== "avalanche") {
+      return (
+        <BentoCardSimple
+          title="DEX Volume (24h)"
+          value="N/A"
+          subtitle="Only available for Avalanche"
+          colors={colors}
+          icon={<BarChart3 className="h-4 w-4" />}
+        />
+      )
+    }
+
+    return (
+      <BentoCardSimple
+        title="DEX Volume (24h)"
+        value={loading ? "Loading..." : error ? "Error" : volume ? formatVolume(volume) : "N/A"}
+        subtitle={loading ? "" : error ? "Failed to load" : "+12.4% vs yesterday"}
+        colors={colors}
+        loading={loading}
+        error={error}
+        icon={<BarChart3 className="h-4 w-4" />}
+      />
+    )
   }
 
   return (
@@ -118,30 +228,9 @@ export default function Dashboard() {
             <span className="text-blue-600"> </span>Token Relations<span className="text-blue-600"> </span>
           </div>
           <div className="ml-6 text-xs text-gray-500 max-w-[180px]">
-            Explore our ecosystems. The best metrics in blockchain.
+            Explore our ecosystems.<br />
+            The best metrics in blockchain.
           </div>
-        </div>
-
-        <div className="flex items-center">
-          <div className="relative mx-2">
-            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="rounded-md border border-gray-300 pl-8 pr-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-[200px]"
-            />
-          </div>
-          <Button variant="outline" size="sm" className="mx-1 text-xs">
-            <ChevronDown className="h-3 w-3 mr-1" />
-            CHAIN
-          </Button>
-        </div>
-
-        <div className="flex items-center">
-          <Button variant="outline" size="sm" className="mr-2">
-            Sign In
-          </Button>
-          <Button size="sm">Contact</Button>
         </div>
       </header>
 
@@ -155,7 +244,7 @@ export default function Dashboard() {
           {/* Secondary Navigation */}
           <div className="border-b px-4 py-2 flex items-center">
             <div className="flex space-x-4 overflow-x-auto pb-1">
-              {["Bitcoin", "Ethereum", "Solana", "Avalanche", "Polygon", "Core"].map((network) => (
+              {["Bitcoin", "Ethereum", "Avalanche"].map((network) => (
                 <Button
                   key={network}
                   variant={activeTab === network.toLowerCase() ? "default" : "ghost"}
@@ -276,78 +365,33 @@ export default function Dashboard() {
                   // Bitcoin-specific overview content
                   <>
                     {/* Bitcoin Metrics Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+                      <BitcoinOverviewCards network={activeTab} colors={getNetworkColors(activeTab)} />
+                    </div>
+
+                    {/* Additional Network Metrics */}
                     <div className="grid grid-cols-6 gap-4 mb-8">
-                      <div className="col-span-2">
-                        <BentoCardSimple
-                          title="Price"
-                          value="$63,429.48"
-                          subtitle="+1.24% in 24h"
-                          colors={getNetworkColors(activeTab)}
-                          icon={<DollarSign className="h-4 w-4" />}
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <BentoCardSimple
-                          title="Market Cap"
-                          value="$1.25T"
-                          subtitle="+1.26% in 24h"
-                          colors={getNetworkColors(activeTab)}
-                          icon={<BarChart3 className="h-4 w-4" />}
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <BentoCardSimple
-                          title="Circulating Supply"
-                          value="19.44M BTC"
-                          subtitle="92.57% of 21M"
-                          colors={getNetworkColors(activeTab)}
-                          icon={<Coins className="h-4 w-4" />}
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <BentoCardSimple
-                          title="Hash Rate"
-                          value="562.32 EH/s"
-                          subtitle="+8.47% in 7d"
-                          colors={getNetworkColors(activeTab)}
-                          icon={<Cpu className="h-4 w-4" />}
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <BentoCardSimple
-                          title="Active Addresses"
-                          value="1.02M"
-                          subtitle="+3.12% in 24h"
-                          colors={getNetworkColors(activeTab)}
-                          icon={<Users className="h-4 w-4" />}
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <BentoCardSimple
-                          title="Transaction Count"
-                          value="324,892"
-                          subtitle="Daily average"
-                          colors={getNetworkColors(activeTab)}
-                          icon={<LineChart className="h-4 w-4" />}
-                        />
-                      </div>
+                      <OverviewNetworkMetricsCards network={activeTab} colors={getNetworkColors(activeTab)} />
                     </div>
 
-                    {/* Bitcoin Metrics Chart */}
+                    {/* Consolidated chart */}
+                    <div className="mb-12">
+                      <ConsolidatedMetricsChart network={activeTab} />
+                    </div>
+
+                    {/* Bitcoin Network Activity Chart */}
                     <div className="mb-8">
-                      <BitcoinMetricsChart title="Bitcoin Metrics" height="500px" defaultMetric="close_price" />
+                      <BitcoinNetworkActivityChart network={activeTab} />
                     </div>
 
-                    {/* Additional Bitcoin Metrics */}
-                    <div className="grid grid-cols-2 gap-6 mb-8">
-                      <div>
-                        <h3 className="text-md font-semibold mb-2">Hash Rate & Mining</h3>
-                        <BitcoinMetricsChart title="Hash Rate" height="300px" defaultMetric="hash_rate" />
-                      </div>
-                      <div>
-                        <h3 className="text-md font-semibold mb-2">Transaction Activity</h3>
-                        <BitcoinMetricsChart title="Transactions" height="300px" defaultMetric="txn_count" />
-                      </div>
+                    {/* Bitcoin Mining Metrics Chart */}
+                    <div className="mb-8">
+                      <BitcoinMiningMetricsChart network={activeTab} />
+                    </div>
+
+                    {/* Bitcoin Market Metrics Chart */}
+                    <div className="mb-8">
+                      <BitcoinMarketMetricsChart network={activeTab} />
                     </div>
                   </>
                 ) : (
@@ -355,71 +399,64 @@ export default function Dashboard() {
                   <>
                     {/* Metrics Cards */}
                     <div className="grid grid-cols-6 gap-4 mb-8">
-                      <div className="col-span-2">
-                        <BentoCardSimple
-                          title="RWA Value"
-                          value="$169.29M"
-                          subtitle="+1.56% in 24h ago"
-                          colors={getNetworkColors(activeTab)}
-                          icon={<DollarSign className="h-4 w-4" />}
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <BentoCardSimple
-                          title="RWA Holders"
-                          value="7,588"
-                          subtitle="+0.04% in 24h ago"
-                          colors={getNetworkColors(activeTab)}
-                          icon={<Users className="h-4 w-4" />}
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <BentoCardSimple
-                          title="RWA Asset Count"
-                          value="25"
-                          colors={getNetworkColors(activeTab)}
-                          icon={<Package className="h-4 w-4" />}
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <BentoCardSimple
-                          title="Stablecoin Market Cap"
-                          value="$2.22B"
-                          subtitle="+0.08% in 24h ago"
-                          colors={getNetworkColors(activeTab)}
-                          icon={<Coins className="h-4 w-4" />}
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <BentoCardSimple
-                          title="Stablecoin Holders"
-                          value="2.52M"
-                          subtitle="+0.04% in 24h ago"
-                          colors={getNetworkColors(activeTab)}
-                          icon={<Wallet className="h-4 w-4" />}
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <BentoCardSimple
-                          title="Stablecoin Count"
-                          value="8"
-                          colors={getNetworkColors(activeTab)}
-                          icon={<Hash className="h-4 w-4" />}
-                        />
-                      </div>
+                      <OverviewMetricsCards network={activeTab} colors={getNetworkColors(activeTab)} />
+                      <OverviewNetworkMetricsCards network={activeTab} colors={getNetworkColors(activeTab)} />
+                    </div>
+
+                    {/* Replace the two charts with one consolidated chart */}
+                    <div className="mb-12">
+                      <ConsolidatedMetricsChart network={activeTab} />
                     </div>
 
                     {/* Metrics Chart - Using our updated PlotlyChart component */}
-                    <div className="mb-8">
+                    <div className="mb-8 mt-12">
                       {activeTab === "ethereum" ? (
-                        <EthereumMetricsChart title="Ethereum Metrics" height="500px" defaultMetric="price" />
+                        <>
+                          {/* Ethereum Financial Metrics Chart */}
+                          <div className="mb-8">
+                            <EthereumFinancialMetricsChart network={activeTab} />
+                          </div>
+
+                          {/* Ethereum Supply Metrics Chart */}
+                          <div className="mb-8">
+                            <EthereumSupplyMetricsChart network={activeTab} />
+                          </div>
+
+                          {/* Ethereum Staking Metrics Chart */}
+                          <div className="mb-8">
+                            <EthereumStakingMetricsChart network={activeTab} />
+                          </div>
+
+                          {/* Ethereum Network Activity Chart */}
+                          <div className="mb-8">
+                            <EthereumNetworkActivityChart network={activeTab} />
+                          </div>
+                        </>
                       ) : (
                         <PlotlyChart network={activeTab} metric="activeAddresses" />
                       )}
                     </div>
 
-                    {/* Add the Subnet Metrics Chart */}
-                    <SubnetMetricsChart network={activeTab} />
+                    {/* Add Network Stats Chart for Avalanche */}
+                    {activeTab === "avalanche" && (
+                      <div className="mb-8 mt-12">
+                        <NetworkStatsChart network={activeTab} metric="avgGps" />
+                      </div>
+                    )}
+
+                    {/* Add Stablecoin Metrics Chart for Avalanche */}
+                    {activeTab === "avalanche" && (
+                      <div className="mb-8">
+                        <StablecoinMetricsChart network={activeTab} />
+                      </div>
+                    )}
+
+                    {/* Add C-Chain Metrics Chart for Avalanche */}
+                    {activeTab === "avalanche" && (
+                      <div className="mb-8">
+                        <CChainMetricsChart network={activeTab} />
+                      </div>
+                    )}
                   </>
                 )}
               </>
@@ -437,18 +474,61 @@ export default function Dashboard() {
                   />
                 )}
                 
-                {/* Replace the PlotlyChart components with our new NetworkStatsChart */}
-                <div className="mb-8">
-                  <NetworkStatsChart network={activeTab} metric="avgGps" />
-                </div>
+                {/* Add Ethereum Network Activity Chart for Ethereum */}
+                {activeTab === "ethereum" && (
+                  <div className="mb-8">
+                    <EthereumNetworkActivityChart network={activeTab} />
+                  </div>
+                )}
                 
-                {/* Remove the existing BentoCards in favor of the chart */}
+                {/* Add the comprehensive NetworkStatsChart */}
+                {activeTab === "avalanche" && (
+                  <div className="mb-8">
+                    <NetworkStatsChart network={activeTab} metric="avgGps" />
+                  </div>
+                )}
+                
+                {/* Add the focused charts below */}
+                {activeTab === "avalanche" && (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <div>
+                      <ContractsDeployersChart network={activeTab} />
+                    </div>
+                    <div>
+                      <GasFeesChart network={activeTab} />
+                    </div>
+                    <div>
+                      <TpsGpsChart network={activeTab} />
+                    </div>
+                    <div>
+                      <TransactionsChart network={activeTab} />
+                    </div>
+                    <div>
+                      <AddressesChart network={activeTab} />
+                    </div>
+                  </div>
+                )}
+                
+                {/* Add AVAX Burn Chart for Avalanche network */}
+                {activeTab === "avalanche" && (
+                  <div className="mb-8">
+                    <AvaxBurnChart network={activeTab} />
+                  </div>
+                )}
+                
+                {/* Add Staking Distribution Pie Chart for Avalanche network */}
+                {activeTab === "avalanche" && (
+                  <div className="mb-8">
+                    <StakingDistributionPieChart network={activeTab} />
+                  </div>
+                )}
               </div>
             )}
 
             {activeSubcategory === "l1s" && (
               <div>
                 <h2 className="text-lg font-bold mb-4">Layer 1 Performance</h2>
+                
                 <div className="grid grid-cols-3 gap-4 mb-8">
                   <div>
                     <BentoCardSimple
@@ -474,33 +554,97 @@ export default function Dashboard() {
                   </div>
                 </div>
                 
-                {/* Subnet Metrics Charts */}
+                {/* C-Chain Metrics Chart */}
                 <div className="mb-8">
-                  <h3 className="text-md font-semibold mb-2">Subnet Performance</h3>
-                  <SubnetMetricsChart title="Subnet Metrics" />
+                  <CChainMetricsChart network={activeTab} />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-6 mb-8">
+                {/* Subnet Performance Overview */}
+                <div className="mb-8">
+                  <h3 className="text-md font-semibold mb-2">Subnet Performance Overview</h3>
+                  <SubnetMetricsChart />
+                </div>
+                
+                {/* Subnet Metrics Table */}
+                <div className="mb-8">
+                  <SubnetMetricsTable />
+                </div>
+              </div>
+            )}
+
+            {activeSubcategory === "defi" && (
+              <div>
+                <h2 className="text-lg font-bold mb-4">DeFi Ecosystem</h2>
+                
+                {/* DeFi Overview Cards */}
+                <div className="grid grid-cols-3 gap-4 mb-8">
                   <div>
-                    <h3 className="text-md font-semibold mb-2">Gas Prices</h3>
-                    <PlotlyChart network={activeTab} metric="avgGps" />
+                    <BentoCardSimple
+                      title="Total Value Locked"
+                      value="$8.95B"
+                      subtitle="+0.75% in 24h ago"
+                      colors={getNetworkColors(activeTab)}
+                      icon={<Coins className="h-4 w-4" />}
+                    />
                   </div>
                   <div>
-                    <h3 className="text-md font-semibold mb-2">Transaction Volume</h3>
-                    <SubnetMetricsChart title="Transaction Volume" />
+                    <BentoCardSimple
+                      title="Active Protocols"
+                      value="156"
+                      subtitle="+2 new this week"
+                      colors={getNetworkColors(activeTab)}
+                      icon={<Package className="h-4 w-4" />}
+                    />
+                  </div>
+                  <div>
+                    <DexVolumeCard network={activeTab} colors={getNetworkColors(activeTab)} />
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-6 mb-8">
-                  <div>
-                    <h3 className="text-md font-semibold mb-2">Active Addresses</h3>
-                    <SubnetMetricsChart title="Active Addresses" />
-                  </div>
-                  <div>
-                    <h3 className="text-md font-semibold mb-2">Block Production</h3>
-                    <SubnetMetricsChart title="Block Production" />
+                {/* Top Protocols by TVL */}
+                <div className="mb-8">
+                  <h3 className="text-md font-semibold mb-2">Top Protocols by TVL</h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <TopProtocolsTVLChart network={activeTab} />
+                    </div>
+                    <div>
+                      <DexVolumePieChart network={activeTab} />
+                    </div>
                   </div>
                 </div>
+                
+                {/* Protocol TVL Chart */}
+                <div className="mb-8">
+                  <h3 className="text-md font-semibold mb-2">Total Value Locked Over Time</h3>
+                  <ProtocolTVLChart network={activeTab} />
+                </div>
+                
+                {/* DEX Trading Volume */}
+                <div className="mb-8">
+                  <h3 className="text-md font-semibold mb-2">DEX Trading Volume</h3>
+                  <DexVolumeChart network={activeTab} />
+                </div>
+                
+                {/* Protocol Metrics Chart */}
+                <div className="mb-8">
+                  <h3 className="text-md font-semibold mb-2">Protocol Performance Metrics</h3>
+                  <ProtocolMetricsChart network={activeTab} />
+                </div>
+                
+                {/* DeFi Protocols Table */}
+                <div className="mb-8">
+                  <h3 className="text-md font-semibold mb-2">Top DeFi Protocols</h3>
+                  <AvalancheDeFiTable network={activeTab} />
+                </div>
+                
+                {/* Stablecoin Integration */}
+                {activeTab === "avalanche" && (
+                  <div className="mb-8">
+                    <h3 className="text-md font-semibold mb-2">Stablecoin Circulation in DeFi</h3>
+                    <StablecoinMetricsChart network={activeTab} />
+                  </div>
+                )}
               </div>
             )}
 
@@ -557,6 +701,12 @@ export default function Dashboard() {
                   <DAppsTopMetricsTable network={activeTab} />
                 </div>
                 
+                {/* Add the new DeFi table */}
+                <div className="mb-8">
+                  <h3 className="text-md font-semibold mb-2">Top DeFi Protocols</h3>
+                  <AvalancheDeFiTable network={activeTab} />
+                </div>
+                
                 {/* DEX volume chart */}
                 <div className="mb-8">
                   <h3 className="text-md font-semibold mb-2">DEX Volumes</h3>
@@ -568,56 +718,39 @@ export default function Dashboard() {
             {activeSubcategory === "stablecoins" && (
               <div>
                 <h2 className="text-lg font-bold mb-4">Stablecoins</h2>
-                <div className="grid grid-cols-6 gap-4 mb-8">
-                  <div className="col-span-2">
-                    <BentoCardSimple
-                      title="Total Circulating"
-                      value="$1.78B"
-                      subtitle="+0.08% in 24h ago"
-                      colors={getNetworkColors(activeTab)}
-                      icon={<Coins className="h-4 w-4" />}
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <BentoCardSimple
-                      title="USDC Circulating"
-                      value="$773.60M"
-                      subtitle="+0.06% in 24h ago"
-                      colors={getNetworkColors(activeTab)}
-                      icon={<DollarSign className="h-4 w-4" />}
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <BentoCardSimple
-                      title="USDT Circulating"
-                      value="$770.54M"
-                      subtitle="+0.05% in 24h ago"
-                      colors={getNetworkColors(activeTab)}
-                      icon={<DollarSign className="h-4 w-4" />}
-                    />
-                  </div>
-                </div>
                 
-                <div className="mb-8">
-                  <StablecoinMetricsChart network={activeTab} />
-                </div>
-                
-                <div className="mb-8">
-                  <h3 className="text-md font-semibold mb-2">Stablecoin Distribution</h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="col-span-2">
-                      <PlotlyChart network={activeTab} metric="stablecoinVolume" />
+                {/* Use Ethereum-specific components for Ethereum, otherwise use the generic ones */}
+                {activeTab === "ethereum" ? (
+                  <>
+                    {/* Ethereum Stablecoin Stats Cards */}
+                    <div className="grid grid-cols-6 gap-4 mb-8">
+                      <EthereumStablecoinStatsCards network={activeTab} colors={getNetworkColors(activeTab)} />
                     </div>
-                    <div>
-                      <PieChartComponent network={activeTab} />
+                    
+                    {/* Ethereum Stablecoin Metrics Chart with toggle */}
+                    <div className="mb-8">
+                      <EthereumStablecoinMetricsChart network={activeTab} />
                     </div>
-                  </div>
-                </div>
-                
-                <div className="mb-8">
-                  <h3 className="text-md font-semibold mb-2">Stablecoins on {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h3>
-                  <DataTable network={activeTab} />
-                </div>
+                    
+                    {/* Ethereum Stablecoin Bridging Chart */}
+                    <div className="mb-8">
+                      <EthereumStablecoinBridgingChart network={activeTab} />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Replace the static grid with the dynamic component */}
+                    <StablecoinStatsCards network={activeTab} colors={getNetworkColors(activeTab)} />
+                    
+                    <div className="mb-8">
+                      <StablecoinMetricsChart network={activeTab} />
+                    </div>
+                    
+                    <div className="mb-8">
+                      <StablecoinBridgingChart network={activeTab} />
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -680,7 +813,7 @@ export default function Dashboard() {
                     <PlotlyChart network={activeTab} metric="proposalVotes" />
                   </div>
                   <div>
-                    <StakingDistributionChart network={activeTab} />
+                    <StakingDistributionPieChart network={activeTab} />
                   </div>
                 </div>
                 
@@ -695,23 +828,6 @@ export default function Dashboard() {
                   <h3 className="text-md font-semibold mb-2">Avalanche Community Discussions</h3>
                   <div className="border p-4 rounded-md">
                     <AvalancheDiscussions showClosed={false} maxHeight="600px" />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* League Table */}
-            {activeSubcategory === "overview" && (
-              <div className="mb-8">
-                <h2 className="text-lg font-bold mb-4">
-                  {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} RWA League Table
-                </h2>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-2">
-                    <DataTable network={activeTab} />
-                  </div>
-                  <div>
-                    <PieChartComponent network={activeTab} />
                   </div>
                 </div>
               </div>

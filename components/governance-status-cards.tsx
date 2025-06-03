@@ -6,10 +6,7 @@ import { useProposalCounts } from "@/lib/hooks/use-proposal-counts"
 
 // Pass the colors as a prop instead of importing from a non-existent module
 interface GovernanceStatusCardsProps {
-  colors: {
-    primary: string;
-    secondary: string;
-  };
+  colors: string[];
 }
 
 export function GovernanceStatusCards({ colors }: GovernanceStatusCardsProps) {

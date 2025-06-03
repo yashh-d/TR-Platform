@@ -8,32 +8,24 @@ import { Button } from "@/components/ui/button"
 // Dynamically import Plotly to avoid SSR issues
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false })
 
-interface NetworkStatsChartProps {
+interface GasFeesChartProps {
   network: string
-  metric?: string
 }
 
-// Network Stats metrics - only including the specified ones
-const networkStatsMetrics = [
-  { id: "avgGps", label: "Avg GPS" },
-  { id: "maxGps", label: "Max GPS" },
-  { id: "avgTps", label: "Avg TPS" },
-  { id: "maxTps", label: "Max TPS" },
+// Gas & Fees specific metrics
+const gasFeesMetrics = [
   { id: "maxGasPrice", label: "Max Gas Price" },
-  { id: "feesPaid", label: "Fees Paid" },
   { id: "avgGasPrice", label: "Avg Gas Price" },
-  { id: "gasUsed", label: "Gas Used" },
-  { id: "cumulativeContracts", label: "Cumulative Contracts" },
-  { id: "cumulativeDeployers", label: "Cumulative Deployers" }
+  { id: "feesPaid", label: "Fees Paid" },
+  { id: "gasUsed", label: "Gas Used" }
 ]
 
-export function NetworkStatsChart({ network, metric }: NetworkStatsChartProps) {
-  // State for all metrics data
-  const [metricsData, setMetricsData] = useState<Record<string, any[]>>({})
+export function GasFeesChart({ network }: GasFeesChartProps) {
+  const [metricsData, setMetricsData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState<"7D" | "30D" | "3M" | "6M" | "1Y" | "ALL">("30D")
-  const [activeMetric, setActiveMetric] = useState<string>("")
+  const [activeMetric, setActiveMetric] = useState<string>("avgGasPrice")
   const [chartData, setChartData] = useState<any[]>([])
 
   // Get network-specific colors for the chart line
@@ -56,32 +48,20 @@ export function NetworkStatsChart({ network, metric }: NetworkStatsChartProps) {
     }
   }
 
-  // Fetch all metrics data on initial load
+  // Fetch metrics data
   useEffect(() => {
-    async function fetchAllMetricsData() {
+    async function fetchMetricsData() {
       try {
         setLoading(true)
         
-        // Initial active metric based on prop or default
-        const initialMetric = metric || networkStatsMetrics[0].id
-        setActiveMetric(initialMetric)
+        const selectColumns = ['date', 'maxGasPrice', 'avgGasPrice', 'feesPaid', 'gasUsed']
         
-        // Fetch all data with pagination
-        console.log(`[NetworkStatsChart] Fetching all metrics data...`)
-        
-        // Select all columns that we need
-        const selectColumns = ['date', 'timestamp']
-        networkStatsMetrics.forEach(m => selectColumns.push(`"${m.id}"`))
-        
-        // Build the query with all columns
         let fetchedData: any[] = []
         let hasMore = true
         let page = 0
-        const pageSize = 1000 // Max size per request
+        const pageSize = 1000
         
         while (hasMore) {
-          console.log(`[NetworkStatsChart] Fetching page ${page}...`)
-          
           const { data, error } = await supabase
             .from('avalanche_core')
             .select(selectColumns.join(','))
@@ -94,7 +74,6 @@ export function NetworkStatsChart({ network, metric }: NetworkStatsChartProps) {
             fetchedData = [...fetchedData, ...data]
             page++
             
-            // Check if we've received less than the page size, meaning no more data
             if (data.length < pageSize) {
               hasMore = false
             }
@@ -103,28 +82,23 @@ export function NetworkStatsChart({ network, metric }: NetworkStatsChartProps) {
           }
         }
         
-        console.log(`[NetworkStatsChart] Total rows fetched: ${fetchedData.length}`)
-        
-        // Store all fetched data
-        setMetricsData({ allData: fetchedData })
-        
-        // Create initial chart for the active metric
-        updateChartForMetric(initialMetric, fetchedData, timeRange, network)
+        setMetricsData(fetchedData)
+        updateChartForMetric(activeMetric, fetchedData, timeRange, network)
       } catch (err) {
-        console.error('Error fetching metrics data:', err)
-        setError(err instanceof Error ? err.message : 'Failed to fetch metrics data')
+        console.error('Error fetching gas/fees data:', err)
+        setError(err instanceof Error ? err.message : 'Failed to fetch data')
       } finally {
         setLoading(false)
       }
     }
     
-    fetchAllMetricsData()
-  }, [network, metric])
+    fetchMetricsData()
+  }, [network])
   
-  // Update chart when time range, active metric, or network changes
+  // Update chart when time range or active metric changes
   useEffect(() => {
-    if (metricsData.allData && metricsData.allData.length > 0) {
-      updateChartForMetric(activeMetric, metricsData.allData, timeRange, network)
+    if (metricsData.length > 0) {
+      updateChartForMetric(activeMetric, metricsData, timeRange, network)
     }
   }, [timeRange, activeMetric, network, metricsData])
   
@@ -142,64 +116,45 @@ export function NetworkStatsChart({ network, metric }: NetworkStatsChartProps) {
     if (range === "7D") {
       const sevenDaysAgo = new Date()
       sevenDaysAgo.setDate(now.getDate() - 7)
-      filteredData = data.filter(item => {
-        const itemDate = new Date(item.date)
-        return itemDate >= sevenDaysAgo
-      })
+      filteredData = data.filter(item => new Date(item.date) >= sevenDaysAgo)
     } else if (range === "30D") {
       const thirtyDaysAgo = new Date()
       thirtyDaysAgo.setDate(now.getDate() - 30)
-      filteredData = data.filter(item => {
-        const itemDate = new Date(item.date)
-        return itemDate >= thirtyDaysAgo
-      })
+      filteredData = data.filter(item => new Date(item.date) >= thirtyDaysAgo)
     } else if (range === "3M") {
       const threeMonthsAgo = new Date()
       threeMonthsAgo.setMonth(now.getMonth() - 3)
-      filteredData = data.filter(item => {
-        const itemDate = new Date(item.date)
-        return itemDate >= threeMonthsAgo
-      })
+      filteredData = data.filter(item => new Date(item.date) >= threeMonthsAgo)
     } else if (range === "6M") {
       const sixMonthsAgo = new Date()
       sixMonthsAgo.setMonth(now.getMonth() - 6)
-      filteredData = data.filter(item => {
-        const itemDate = new Date(item.date)
-        return itemDate >= sixMonthsAgo
-      })
+      filteredData = data.filter(item => new Date(item.date) >= sixMonthsAgo)
     } else if (range === "1Y") {
       const oneYearAgo = new Date()
       oneYearAgo.setFullYear(now.getFullYear() - 1)
-      filteredData = data.filter(item => {
-        const itemDate = new Date(item.date)
-        return itemDate >= oneYearAgo
-      })
+      filteredData = data.filter(item => new Date(item.date) >= oneYearAgo)
     }
     
     // Find proper label for the metric
-    const metricInfo = networkStatsMetrics.find(m => m.id === metricName)
+    const metricInfo = gasFeesMetrics.find(m => m.id === metricName)
     const metricLabel = metricInfo ? metricInfo.label : metricName
     
     // Get network color for the chart line
     const lineColor = getNetworkColors(network)[0]
     
-    // Create the trace for the chart with network-specific color
+    // Create the trace for the chart
     if (filteredData.length > 0) {
-      // Better parsing for text values - handle various formats
       const yValues = filteredData.map(item => {
         const rawValue = item[metricName]
         if (rawValue === null || rawValue === undefined || rawValue === '') {
           return 0
         }
         
-        // If it's already a number, use it
         if (typeof rawValue === 'number') {
           return rawValue
         }
         
-        // If it's a string, try to parse it
         if (typeof rawValue === 'string') {
-          // Remove any commas or whitespace and try to parse
           const cleanValue = rawValue.replace(/,/g, '').trim()
           const parsed = parseFloat(cleanValue)
           return isNaN(parsed) ? 0 : parsed
@@ -207,8 +162,6 @@ export function NetworkStatsChart({ network, metric }: NetworkStatsChartProps) {
         
         return 0
       })
-
-      console.log(`[NetworkStatsChart] Metric: ${metricName}, Sample values:`, yValues.slice(0, 5))
 
       const trace = {
         type: "scatter",
@@ -219,7 +172,7 @@ export function NetworkStatsChart({ network, metric }: NetworkStatsChartProps) {
         line: { 
           width: 2, 
           color: lineColor,
-          shape: 'spline', // Smoother line
+          shape: 'spline',
         },
         hoverinfo: 'y+x',
       }
@@ -232,7 +185,7 @@ export function NetworkStatsChart({ network, metric }: NetworkStatsChartProps) {
   
   if (loading) return (
     <div className="h-[350px] flex items-center justify-center">
-      <div className="animate-pulse text-gray-500">Loading network stats data...</div>
+      <div className="animate-pulse text-gray-500">Loading gas & fees data...</div>
     </div>
   )
   
@@ -242,22 +195,22 @@ export function NetworkStatsChart({ network, metric }: NetworkStatsChartProps) {
     </div>
   )
   
-  if (!metricsData.allData || metricsData.allData.length === 0) return (
+  if (!metricsData || metricsData.length === 0) return (
     <div className="h-[350px] flex items-center justify-center">
-      <div className="text-gray-500">No network stats data available</div>
+      <div className="text-gray-500">No gas & fees data available</div>
     </div>
   )
   
   return (
     <div className="border rounded-md bg-white p-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold">Network Stats</h2>
+        <h2 className="text-lg font-bold">Gas + Fees</h2>
       </div>
       
-      {/* Metric Pills - Horizontal scrolling */}
+      {/* Metric Pills */}
       <div className="mb-4 overflow-x-auto">
         <div className="flex space-x-2 pb-2">
-          {networkStatsMetrics.map(metric => (
+          {gasFeesMetrics.map(metric => (
             <Button
               key={metric.id}
               variant={activeMetric === metric.id ? "default" : "outline"}
@@ -277,12 +230,7 @@ export function NetworkStatsChart({ network, metric }: NetworkStatsChartProps) {
       </div>
       
       <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center space-x-4 text-sm text-gray-600">
-          <div>Show Y-Axis: Total</div>
-          <div>Group By: Asset</div>
-        </div>
-        
-        {/* Time range toggle buttons with network-specific colors */}
+        {/* Time range toggle buttons */}
         <div className="flex space-x-1">
           {["7D", "30D", "3M", "6M", "1Y", "ALL"].map((range) => (
             <Button
@@ -303,7 +251,7 @@ export function NetworkStatsChart({ network, metric }: NetworkStatsChartProps) {
         </div>
       </div>
       
-      {/* Chart with network-colored line */}
+      {/* Chart */}
       <div className="h-[300px]">
         {chartData.length > 0 ? (
           <Plot

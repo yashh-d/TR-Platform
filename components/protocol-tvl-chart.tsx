@@ -55,11 +55,6 @@ interface TVLData {
   tvl: number
 }
 
-interface TotalTVLData {
-  date: string
-  total_tvl: number
-}
-
 export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChartProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -67,10 +62,8 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
   const [selectedProtocols, setSelectedProtocols] = useState<string[]>([])
   const [protocolsOpen, setProtocolsOpen] = useState(false)
   const [protocolData, setProtocolData] = useState<TVLData[]>([])
-  const [totalTVLData, setTotalTVLData] = useState<TotalTVLData[]>([])
   const [timeRange, setTimeRange] = useState<"1M" | "3M" | "6M" | "1Y" | "ALL">("1Y")
   const [chartType, setChartType] = useState<"individual" | "stacked" | "percentage">("individual")
-  const [showTotalTVL, setShowTotalTVL] = useState(true)
 
   // Get the normalized network name for the database
   const getNormalizedNetwork = (network: string): string => {
@@ -179,9 +172,12 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
         if (error) throw error
 
         if (data && data.length > 0) {
-          setAvailableProtocols(data.map((item) => item.protocol))
+          // Sort protocols by TVL in descending order (highest TVL first)
+          const sortedProtocols = data.sort((a: any, b: any) => (b.current_tvl || 0) - (a.current_tvl || 0))
+          
+          setAvailableProtocols(sortedProtocols.map((item: any) => item.protocol))
           // Select top 5 protocols by default (or all if less than 5)
-          setSelectedProtocols(data.slice(0, Math.min(5, data.length)).map((item) => item.protocol))
+          setSelectedProtocols(sortedProtocols.slice(0, Math.min(5, sortedProtocols.length)).map((item: any) => item.protocol))
         } else {
           setAvailableProtocols([])
           setSelectedProtocols([])
@@ -224,20 +220,7 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
 
         if (protocolError) throw protocolError
 
-        // Fetch total TVL data for the chain
-        const { data: totalTVLResult, error: totalError } = await supabase.rpc(
-          "get_total_chain_tvl",
-          {
-            chain_param: normalizedNetwork,
-            start_date_param: startDate.toISOString().split("T")[0],
-            end_date_param: endDate.toISOString().split("T")[0],
-          }
-        )
-
-        if (totalError) throw totalError
-
         setProtocolData(protocolTVLData as TVLData[])
-        setTotalTVLData(totalTVLResult as TotalTVLData[])
       } catch (err) {
         console.error("Failed to fetch TVL data:", err)
         setError("Failed to load TVL data. Please try again later.")
@@ -287,23 +270,6 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
           hovertemplate: "%{y:$,.2f}<extra>%{fullData.name}</extra>",
         })
       })
-
-      // Add total TVL trace if selected
-      if (showTotalTVL && totalTVLData.length > 0 && chartType === "individual") {
-        traces.push({
-          type: "scatter",
-          mode: "lines",
-          name: "Total Chain TVL",
-          x: totalTVLData.map((item) => item.date),
-          y: totalTVLData.map((item) => item.total_tvl),
-          line: {
-            width: 3,
-            color: getNetworkColor(network),
-            dash: "dash",
-          },
-          hovertemplate: "%{y:$,.2f}<extra>Total Chain TVL</extra>",
-        })
-      }
     } else if (chartType === "percentage") {
       // Create percentage traces - normalize each day to 100%
       const dateGroups: Record<string, { protocol: string; tvl: number }[]> = {}
@@ -517,39 +483,24 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
           </div>
         </div>
 
-        {/* Time range selector and total TVL toggle */}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            {chartType === "individual" && (
-              <Button
-                size="sm"
-                variant={showTotalTVL ? "default" : "outline"}
-                onClick={() => setShowTotalTVL(!showTotalTVL)}
-                className="text-xs"
-              >
-                {showTotalTVL ? "Hide Total TVL" : "Show Total TVL"}
-              </Button>
-            )}
-          </div>
-
-          <div className="flex space-x-1">
-            {["1M", "3M", "6M", "1Y", "ALL"].map((range) => (
-              <Button
-                key={range}
-                size="sm"
-                variant={timeRange === range ? "default" : "outline"}
-                onClick={() => setTimeRange(range as any)}
-                className="text-xs"
-                style={{
-                  backgroundColor: timeRange === range ? getNetworkColor(network) : "",
-                  borderColor: timeRange === range ? getNetworkColor(network) : "",
-                  color: timeRange === range ? "white" : "",
-                }}
-              >
-                {range}
-              </Button>
-            ))}
-          </div>
+        {/* Time range selector */}
+        <div className="flex space-x-1">
+          {["1M", "3M", "6M", "1Y", "ALL"].map((range) => (
+            <Button
+              key={range}
+              size="sm"
+              variant={timeRange === range ? "default" : "outline"}
+              onClick={() => setTimeRange(range as any)}
+              className="text-xs"
+              style={{
+                backgroundColor: timeRange === range ? getNetworkColor(network) : "",
+                borderColor: timeRange === range ? getNetworkColor(network) : "",
+                color: timeRange === range ? "white" : "",
+              }}
+            >
+              {range}
+            </Button>
+          ))}
         </div>
 
         {/* Chart area */}

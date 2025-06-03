@@ -238,7 +238,9 @@ export function DexVolumeChart({ network, maxHeight = "500px" }: DexVolumeChartP
         };
         
         // Try the RPC function with retry mechanism
-        const { data, error: fetchError } = await makeRPCCall();
+        const result = await makeRPCCall() as any;
+        const data = result.data;
+        const fetchError = result.error;
         
         const endTime = performance.now()
         console.log(`Volume data RPC call took ${(endTime - startTime).toFixed(2)}ms`)

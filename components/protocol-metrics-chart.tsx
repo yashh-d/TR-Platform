@@ -186,8 +186,8 @@ export function ProtocolMetricsChart({ network, height = "400px" }: ProtocolMetr
           const dateStr = currentDate.toISOString().split('T')[0]
           totalsByDate[dateStr] = {total_fees: 0, total_revenue: 0}
           
-          // Generate data for each selected protocol
-          selectedProtocols.forEach((protocol, index) => {
+          // Generate data for ALL protocols for total calculation
+          availableProtocols.forEach((protocol, index) => {
             // Base values that will grow over time with some randomness
             const daysSinceStart = Math.floor((currentDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
             const protocolFactor = (index % 5 + 1) * 0.5  // Different scales for different protocols
@@ -204,13 +204,17 @@ export function ProtocolMetricsChart({ network, height = "400px" }: ProtocolMetr
             const fees = baseFees * weekendFactor * randomVariation
             const revenue = baseRevenue * weekendFactor * randomVariation
             
-            simulatedData.push({
-              date: dateStr,
-              protocol,
-              fees,
-              revenue
-            })
+            // Only add to simulatedData if this protocol is selected for display
+            if (selectedProtocols.includes(protocol)) {
+              simulatedData.push({
+                date: dateStr,
+                protocol,
+                fees,
+                revenue
+              })
+            }
             
+            // Always add to totals (for ALL protocols)
             totalsByDate[dateStr].total_fees += fees
             totalsByDate[dateStr].total_revenue += revenue
           })
@@ -332,7 +336,6 @@ export function ProtocolMetricsChart({ network, height = "400px" }: ProtocolMetr
           line: {
             width: 3,
             color: "#E84142", // Avalanche red
-            dash: "dash",
           },
           hovertemplate: "%{y:$,.2f}<extra>Total</extra>",
         })
