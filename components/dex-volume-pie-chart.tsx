@@ -256,19 +256,6 @@ export function DexVolumePieChart({
       <div className="h-[350px] relative">
         <div ref={chartRef} className="w-full h-full"></div>
       </div>
-      
-      {/* Summary table */}
-      <div className="mt-4">
-        <h3 className="text-sm font-semibold mb-2">Volume Breakdown:</h3>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          {data.slice(0, 6).map((item, index) => (
-            <div key={item.protocol} className="flex justify-between">
-              <span className="truncate">{item.protocol}:</span>
-              <span className="font-medium">{item.percentage.toFixed(1)}%</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   )
 } 

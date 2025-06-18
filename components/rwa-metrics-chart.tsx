@@ -26,291 +26,161 @@ interface RWAMetricsChartProps {
   network: string;
 }
 
+// --- TOKEN LIST FROM SCHEMA ---
+const RWA_TOKENS = [
+  "bIB01", "BENJI", "WTSYX", "FLTTX", "WTSTX", "WTLGX", "WTTSX", "TIPSX", "WTGXX", "BUIDL", "XTBT", "XEVT", "bCSPX", "SKHC", "PARAVII", "NOTE", "XRV", "ACRED", "EQTYX", "MODRX", "LNGVX", "WTSIX", "SPXUX", "TECHX", "RE", "VBILL", "XFTB"
+];
+
+// Color palette for tokens (extend or loop as needed)
+const TOKEN_COLORS = [
+  '#7b2ff2', '#f357a8', '#43e97b', '#38f9d7', '#fa8bff', '#ffecd2', '#a1c4fd', '#fbc2eb', '#fcb69f', '#ff8177',
+  '#f7971e', '#ffd200', '#21d4fd', '#b721ff', '#00c6fb', '#f7797d', '#4e54c8', '#e1eec3', '#f857a6', '#ff5858',
+  '#43cea2', '#185a9d', '#f953c6', '#b91d73', '#ff6a00', '#ee0979', '#ff512f'
+];
+
 export function RWAMetricsChart({ network }: RWAMetricsChartProps) {
-  const [data, setData] = useState<RWAData[]>([])
+  const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [tokens, setTokens] = useState<string[]>([])
-  const [protocols, setProtocols] = useState<string[]>([])
-  const [selectedToken, setSelectedToken] = useState<string>('all')
-  const [selectedProtocol, setSelectedProtocol] = useState<string>('all')
-  const [timeRange, setTimeRange] = useState('1Y') // Default to 1 year
+  const [tokens, setTokens] = useState<string[]>(RWA_TOKENS)
+  const [selectedToken, setSelectedToken] = useState<string>('stacked')
+  const [timeRange, setTimeRange] = useState('1Y')
   const [chartData, setChartData] = useState<any>({})
-  const [tokensLoading, setTokensLoading] = useState(true)
-  const [protocolsLoading, setProtocolsLoading] = useState(true)
 
   // Get network-specific color
   const getNetworkColor = (network: string) => {
     switch (network.toLowerCase()) {
-      case "bitcoin":
-        return "#F7931A"
-      case "ethereum":
-        return "#627EEA"
-      case "solana":
-        return "#14F195"
-      case "avalanche":
-        return "#E84142"
-      case "polygon":
-        return "#8247E5"
-      case "core":
-        return "#FF7700" // Bright orange
-      default:
-        return "#3B82F6"
+      case "bitcoin": return "#F7931A"
+      case "ethereum": return "#627EEA"
+      case "solana": return "#14F195"
+      case "avalanche": return "#E84142"
+      case "polygon": return "#8247E5"
+      case "core": return "#FF7700"
+      default: return "#3B82F6"
     }
   }
-  
-  // Fetch token names using RPC function
-  useEffect(() => {
-    if (network.toLowerCase() !== "avalanche") {
-      setTokensLoading(false)
-      return
-    }
-    
-    if (!isSupabaseConfigured()) {
-      setError("Supabase not configured properly")
-      setTokensLoading(false)
-      return
-    }
-    
-    async function fetchTokenNames() {
-      try {
-        setTokensLoading(true)
-        
-        // Call the RPC function
-        const { data, error } = await supabase.rpc('get_rwa_token_names')
-        
-        if (error) throw error
-        
-        // Extract the token names
-        const tokenNames = data.map(item => item.token_name)
-        setTokens(tokenNames)
-      } catch (err) {
-        console.error('Error fetching token names:', err)
-        setError('Failed to load token options')
-      } finally {
-        setTokensLoading(false)
-      }
-    }
-    
-    fetchTokenNames()
-  }, [network])
-  
-  // Fetch protocol names using RPC function
-  useEffect(() => {
-    if (network.toLowerCase() !== "avalanche") {
-      setProtocolsLoading(false)
-      return
-    }
-    
-    if (!isSupabaseConfigured()) {
-      setError("Supabase not configured properly")
-      setProtocolsLoading(false)
-      return
-    }
-    
-    async function fetchProtocols() {
-      try {
-        setProtocolsLoading(true)
-        
-        // Call the RPC function
-        const { data, error } = await supabase.rpc('get_rwa_protocols')
-        
-        if (error) throw error
-        
-        // Extract the protocol names
-        const protocolNames = data.map(item => item.protocol)
-        setProtocols(protocolNames)
-      } catch (err) {
-        console.error('Error fetching protocols:', err)
-        setError('Failed to load protocol options')
-      } finally {
-        setProtocolsLoading(false)
-      }
-    }
-    
-    fetchProtocols()
-  }, [network])
-  
-  // Fetch data based on selections
+
+  // Fetch data from rwa_ava2
   useEffect(() => {
     if (network.toLowerCase() !== "avalanche") {
       setLoading(false)
       return
     }
-    
     if (!isSupabaseConfigured()) {
       setError("Supabase not configured properly")
       setLoading(false)
       return
     }
-    
     async function fetchRWAData() {
       try {
         setLoading(true)
-        
-        let query = supabase.from('ava_rwa').select('*')
-        
-        // Apply token filter if not 'all'
-        if (selectedToken !== 'all') {
-          query = query.eq('token_name', selectedToken)
-        }
-        
-        // Apply protocol filter if not 'all'
-        if (selectedProtocol !== 'all') {
-          query = query.eq('protocol', selectedProtocol)
-        }
-        
-        // Filter based on time range
-        if (timeRange === '1Y') {
-          const oneYearAgo = new Date()
-          oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
-          query = query.gte('time', oneYearAgo.toISOString())
-        } else if (timeRange === '6M') {
-          const sixMonthsAgo = new Date()
-          sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
-          query = query.gte('time', sixMonthsAgo.toISOString())
-        } else if (timeRange === '3M') {
-          const threeMonthsAgo = new Date()
-          threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
-          query = query.gte('time', threeMonthsAgo.toISOString())
-        } else if (timeRange === '1M') {
-          const oneMonthAgo = new Date()
-          oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
-          query = query.gte('time', oneMonthAgo.toISOString())
-        }
-        
-        // Order by time
-        query = query.order('time', { ascending: true })
-        
-        const { data: rwaData, error: supabaseError } = await query
-        
-        if (supabaseError) {
-          throw supabaseError
-        }
-        
-        setData(rwaData as RWAData[])
+        // Build time filter
+        let fromDate = new Date()
+        if (timeRange === '1Y') fromDate.setFullYear(fromDate.getFullYear() - 1)
+        else if (timeRange === '6M') fromDate.setMonth(fromDate.getMonth() - 6)
+        else if (timeRange === '3M') fromDate.setMonth(fromDate.getMonth() - 3)
+        else if (timeRange === '1M') fromDate.setMonth(fromDate.getMonth() - 1)
+        // Select all token columns and Date
+        const { data: rows, error: supabaseError } = await supabase
+          .from('rwa_ava2')
+          .select('Date,' + RWA_TOKENS.join(','))
+          .gte('Date', fromDate.toISOString().slice(0, 10))
+          .order('Date', { ascending: true })
+        if (supabaseError) throw supabaseError
+        setData(rows || [])
         setError(null)
       } catch (err) {
-        console.error('Error fetching RWA data:', err)
         setError('Failed to load RWA data')
       } finally {
         setLoading(false)
       }
     }
-    
     fetchRWAData()
-  }, [network, timeRange, selectedToken, selectedProtocol])
-  
+  }, [network, timeRange])
+
   // Process data for the chart whenever raw data changes
   useEffect(() => {
     if (!data || data.length === 0) return
-    
-    // Process data for the chart
-    const processedData = processDataForChart(data)
-    setChartData(processedData)
-  }, [data])
-  
-  // Process data for Plotly chart
-  function processDataForChart(rawData: RWAData[]) {
-    // For multiple tokens or protocols, we'll group by time and sum amounts
-    // Create a map of time -> amount
-    const timeValueMap = new Map<string, number>()
-    
-    rawData.forEach(item => {
-      if (!item.time || item.amount === null) return
-      
-      const time = item.time
-      const amount = item.amount
-      
-      if (timeValueMap.has(time)) {
-        timeValueMap.set(time, timeValueMap.get(time)! + amount)
+    const times: string[] = []
+    // --- Stacked chart logic ---
+    if (selectedToken === 'stacked') {
+      // For each token, build a trace
+      const traces = RWA_TOKENS.map((token, idx) => {
+        const y = data.map(row => Number(row[token] || 0))
+        if (times.length === 0) data.forEach(row => times.push(row.Date))
+        return {
+          x: data.map(row => row.Date),
+          y,
+          name: token,
+          type: 'scatter',
+          mode: 'lines',
+          stackgroup: 'one',
+          fill: 'tonexty',
+          line: { color: TOKEN_COLORS[idx % TOKEN_COLORS.length], width: 2 },
+        }
+      })
+      const layout = {
+        title: 'RWA Metrics: Stacked by Token',
+        xaxis: { title: 'Date', type: 'date', showgrid: true, gridcolor: '#e5e5e5' },
+        yaxis: {
+          title: 'Amount (USD)', showgrid: true, gridcolor: '#e5e5e5',
+          tickprefix: '$', tickformat: '.2s', hoverformat: ',.2f',
+          tickfont: { family: 'Arial, sans-serif', size: 12 }
+        },
+        showlegend: true,
+        legend: { x: 0, y: 1.1, orientation: 'h' },
+        margin: { l: 70, r: 50, t: 50, b: 50 },
+        plot_bgcolor: 'white', paper_bgcolor: 'white'
+      }
+      setChartData({ data: traces, layout, config: { responsive: true, displayModeBar: false } })
+      return
+    }
+    // --- All Tokens (sum) or single token ---
+    const amounts: number[] = []
+    data.forEach(row => {
+      times.push(row.Date)
+      if (selectedToken === 'all') {
+        let sum = 0
+        for (const token of RWA_TOKENS) {
+          sum += Number(row[token] || 0)
+        }
+        amounts.push(sum)
       } else {
-        timeValueMap.set(time, amount)
+        amounts.push(Number(row[selectedToken] || 0))
       }
     })
-    
-    // Convert to arrays for Plotly
-    const times = Array.from(timeValueMap.keys()).sort()
-    const amounts = times.map(time => timeValueMap.get(time) || 0)
-    
-    // Create the trace
     const trace = {
       type: 'scatter',
       mode: 'lines',
       name: selectedToken !== 'all' ? selectedToken : 'All Tokens',
       x: times,
       y: amounts,
-      line: {
-        color: getNetworkColor(network),
-        width: 2
-      }
+      line: { color: getNetworkColor(network), width: 2 },
+      fill: 'tozeroy',
     }
-    
-    // Create layout with formatted y-axis
     const layout = {
-      title: `RWA Metrics: ${selectedToken !== 'all' ? selectedToken : 'All Tokens'} 
-              ${selectedProtocol !== 'all' ? `on ${selectedProtocol}` : ''}`,
-      xaxis: {
-        title: 'Time',
-        type: 'date',
-        showgrid: true,
-        gridcolor: '#e5e5e5'
-      },
+      title: `RWA Metrics: ${selectedToken !== 'all' ? selectedToken : 'All Tokens'}`,
+      xaxis: { title: 'Date', type: 'date', showgrid: true, gridcolor: '#e5e5e5' },
       yaxis: {
-        title: 'Amount (USD)',
-        showgrid: true,
-        gridcolor: '#e5e5e5',
-        tickprefix: '$',
-        tickformat: '.2s', // Format with SI prefix (K, M, B)
-        hoverformat: ',.2f', // Format with commas and 2 decimal places on hover
-        tickfont: {
-          family: 'Arial, sans-serif',
-          size: 12
-        }
+        title: 'Amount (USD)', showgrid: true, gridcolor: '#e5e5e5',
+        tickprefix: '$', tickformat: '.2s', hoverformat: ',.2f',
+        tickfont: { family: 'Arial, sans-serif', size: 12 }
       },
       showlegend: true,
-      legend: {
-        x: 0,
-        y: 1.1,
-        orientation: 'h'
-      },
-      margin: {
-        l: 70, // Increased left margin to accommodate dollar signs
-        r: 50,
-        t: 50,
-        b: 50
-      },
-      plot_bgcolor: 'white',
-      paper_bgcolor: 'white'
+      legend: { x: 0, y: 1.1, orientation: 'h' },
+      margin: { l: 70, r: 50, t: 50, b: 50 },
+      plot_bgcolor: 'white', paper_bgcolor: 'white'
     }
-    
-    return {
-      data: [trace],
-      layout: layout,
-      config: {
-        responsive: true,
-        displayModeBar: false
-      }
-    }
-  }
-  
-  // Handle download functionality
+    setChartData({ data: [trace], layout, config: { responsive: true, displayModeBar: false } })
+  }, [data, selectedToken, network])
+
+  // Download CSV
   const handleDownload = () => {
     if (!data || data.length === 0) return
-    
     const csv = [
-      ['Time', 'Token Name', 'Protocol', 'Amount', 'Total Supply'].join(','),
-      ...data.map(row => 
-        [
-          row.time || '',
-          `"${row.token_name || ''}"`,
-          `"${row.protocol || ''}"`,
-          row.amount || 0,
-          row.total_supply || 0
-        ].join(',')
-      )
+      ['Date', ...RWA_TOKENS].join(','),
+      ...data.map(row => [row.Date, ...RWA_TOKENS.map(token => row[token] ?? '')].join(','))
     ].join('\n')
-    
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -321,7 +191,7 @@ export function RWAMetricsChart({ network }: RWAMetricsChartProps) {
     link.click()
     document.body.removeChild(link)
   }
-  
+
   if (network.toLowerCase() !== "avalanche") {
     return (
       <div className="border rounded-lg p-6 text-center text-gray-500">
@@ -329,49 +199,28 @@ export function RWAMetricsChart({ network }: RWAMetricsChartProps) {
       </div>
     )
   }
-  
+
   return (
     <div className="border rounded-lg p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
         <h3 className="text-lg font-semibold">RWA Metrics</h3>
-        
         <div className="flex flex-wrap gap-2">
           {/* Token selector */}
-          <Select value={selectedToken} onValueChange={setSelectedToken} disabled={tokensLoading}>
+          <Select value={selectedToken} onValueChange={setSelectedToken}>
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder={tokensLoading ? "Loading tokens..." : "Select Token"} />
+              <SelectValue placeholder="Select Token" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
                 <SelectLabel>Tokens</SelectLabel>
+                <SelectItem value="stacked">Stacked</SelectItem>
                 <SelectItem value="all">All Tokens</SelectItem>
                 {tokens.map(token => (
-                  <SelectItem key={token} value={token}>
-                    {token}
-                  </SelectItem>
+                  <SelectItem key={token} value={token}>{token}</SelectItem>
                 ))}
               </SelectGroup>
             </SelectContent>
           </Select>
-          
-          {/* Protocol selector */}
-          <Select value={selectedProtocol} onValueChange={setSelectedProtocol} disabled={protocolsLoading}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder={protocolsLoading ? "Loading protocols..." : "Select Protocol"} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectLabel>Protocols</SelectLabel>
-                <SelectItem value="all">All Protocols</SelectItem>
-                {protocols.map(protocol => (
-                  <SelectItem key={protocol} value={protocol}>
-                    {protocol}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          
           {/* Time range selector */}
           <div className="flex items-center space-x-1">
             {['1Y', '6M', '3M', '1M'].map((range) => (
@@ -385,7 +234,6 @@ export function RWAMetricsChart({ network }: RWAMetricsChartProps) {
               </Button>
             ))}
           </div>
-          
           {/* Download button */}
           <Button variant="outline" size="sm" onClick={handleDownload} disabled={loading || !data.length}>
             <Download className="h-4 w-4 mr-1" />
@@ -393,41 +241,21 @@ export function RWAMetricsChart({ network }: RWAMetricsChartProps) {
           </Button>
         </div>
       </div>
-      
       {/* Loading indicator for data */}
       {loading && (
         <div className="h-[400px] w-full flex items-center justify-center">
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-1/4 mx-auto"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
-          </div>
+          <div className="animate-pulse space-y-4">Loading...</div>
         </div>
       )}
-      
-      {/* Error message */}
-      {error && !loading && (
-        <div className="h-[400px] w-full flex items-center justify-center">
-          <div className="text-center text-red-500">
-            <p>{error}</p>
-          </div>
-        </div>
+      {/* Error */}
+      {error && (
+        <div className="h-[400px] w-full flex items-center justify-center text-red-500">{error}</div>
       )}
-      
-      {/* No data message */}
-      {!loading && !error && (!data || data.length === 0) && (
-        <div className="h-[400px] w-full flex items-center justify-center">
-          <div className="text-center text-gray-500">
-            <p>No data available for the selected filters.</p>
-          </div>
-        </div>
-      )}
-      
-      {/* Chart container */}
+      {/* Chart */}
       {!loading && !error && data && data.length > 0 && (
         <div className="h-[400px] w-full">
           {Object.keys(chartData).length > 0 && (
             <div id="rwa-chart" className="h-full w-full">
-              {/* We'll use Plotly to render the chart client-side */}
               {typeof window !== 'undefined' && (
                 <div
                   ref={(el) => {

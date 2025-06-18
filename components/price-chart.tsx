@@ -4,6 +4,13 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { supabase, isSupabaseConfigured } from "@/lib/supabase"
 
+// Declare Plotly on window object for TypeScript
+declare global {
+  interface Window {
+    Plotly: any;
+  }
+}
+
 interface PriceChartProps {
   network: string;
   title?: string;
@@ -31,7 +38,33 @@ export function PriceChart({
   const [priceData, setPriceData] = useState<PriceData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [plotlyLoaded, setPlotlyLoaded] = useState(false)
   const chartRef = useRef<HTMLDivElement>(null)
+
+  // Load Plotly script if not already loaded
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (window.Plotly) {
+        setPlotlyLoaded(true)
+        return
+      }
+
+      const script = document.createElement('script')
+      script.src = 'https://cdn.plot.ly/plotly-latest.min.js'
+      script.async = true
+      script.onload = () => setPlotlyLoaded(true)
+      script.onerror = () => console.error('Failed to load Plotly')
+      
+      document.head.appendChild(script)
+
+      return () => {
+        // Cleanup script if component unmounts
+        if (document.head.contains(script)) {
+          document.head.removeChild(script)
+        }
+      }
+    }
+  }, [])
 
   // Map network names to CoinGecko coin IDs
   const getCoinId = (network: string): string => {
@@ -280,6 +313,30 @@ export function PriceChart({
     const { percentage } = calculatePriceChange()
     const lineColor = percentage >= 0 ? '#10B981' : '#EF4444' // Green for positive, red for negative
 
+    // Calculate price range for smart formatting
+    const prices = priceData.map(d => d.price)
+    const maxPrice = Math.max(...prices)
+    const minPrice = Math.min(...prices)
+    
+    // Smart tick formatting based on price range
+    let tickFormat = ',.2f'
+    let leftMargin = 80 // Increased from 60 to accommodate larger numbers
+    
+    if (maxPrice >= 10000) {
+      // For prices $10,000+, use K notation when appropriate
+      tickFormat = maxPrice >= 100000 ? ',.0f' : ',.2f'
+      leftMargin = 100 // Even more space for very large numbers
+    } else if (maxPrice >= 1000) {
+      tickFormat = ',.2f'
+      leftMargin = 80
+    } else if (maxPrice >= 1) {
+      tickFormat = ',.4f'
+      leftMargin = 70
+    } else {
+      tickFormat = ',.6f'
+      leftMargin = 70
+    }
+
     const traces = [{
       x: priceData.map(d => new Date(d.timestamp).toISOString()),
       y: priceData.map(d => d.price),
@@ -309,11 +366,15 @@ export function PriceChart({
           showgrid: true,
           gridcolor: '#e5e5e5',
           tickprefix: '$',
-          tickformat: ',.2f',
-          hoverformat: ',.4f'
+          tickformat: tickFormat,
+          hoverformat: ',.4f',
+          // Ensure proper tick spacing for readability
+          nticks: 8,
+          // Add some padding to ensure numbers fit
+          tickmode: 'auto'
         },
         margin: {
-          l: 60,
+          l: leftMargin, // Dynamic left margin based on price range
           r: 40,
           t: 50,
           b: 50
@@ -332,18 +393,16 @@ export function PriceChart({
 
   // Effect to render the chart when data is available
   useEffect(() => {
-    if (!loading && !error && priceData.length > 0 && chartRef.current) {
-      if (typeof window !== 'undefined' && window.Plotly) {
-        const chartData = createChartData()
-        window.Plotly.newPlot(
-          chartRef.current,
-          chartData.data,
-          chartData.layout,
-          chartData.config
-        )
-      }
+    if (!loading && !error && priceData.length > 0 && chartRef.current && plotlyLoaded && window.Plotly) {
+      const chartData = createChartData()
+      window.Plotly.newPlot(
+        chartRef.current,
+        chartData.data as any, // Type assertion to handle Plotly typing issues
+        chartData.layout,
+        chartData.config
+      )
     }
-  }, [loading, error, priceData, timeRange])
+  }, [loading, error, priceData, timeRange, plotlyLoaded])
 
   // Handle time range change
   const handleTimeRangeChange = (range: string) => {

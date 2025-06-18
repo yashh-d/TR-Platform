@@ -329,7 +329,7 @@ export function OverviewMetricsCards({ network, colors }: OverviewMetricsCardsPr
 
   return (
     <>
-      <div className="col-span-2">
+      <div className="col-span-1">
         <BentoCardSimple
           title="TVL"
           value={formatValue(tvlData)}
@@ -340,7 +340,7 @@ export function OverviewMetricsCards({ network, colors }: OverviewMetricsCardsPr
           icon={<TrendingUp className="h-4 w-4" />}
         />
       </div>
-      <div className="col-span-2">
+      <div className="col-span-1">
         <BentoCardSimple
           title="Stablecoin Market Cap"
           value={network.toLowerCase() === "avalanche" ? formatValue(stablecoinData) : "N/A"}
@@ -354,7 +354,7 @@ export function OverviewMetricsCards({ network, colors }: OverviewMetricsCardsPr
           icon={<Coins className="h-4 w-4" />}
         />
       </div>
-      <div className="col-span-2">
+      <div className="col-span-1">
         <BentoCardSimple
           title="Price"
           value={formatValue(priceData, 'price')}

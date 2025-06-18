@@ -1,0 +1,265 @@
+id,name,symbol
+1,Tether,USDT
+10,Magic Internet Money,MIM
+100,Digital Standard Unit,DSU
+101,Monerium EUR emoney,EURE
+102,Offshift anonUSD,ANONUSD
+103,NXUSD,NXUSD
+104,Davos Protocol,DUSD
+105,DeFi Franc,DCHF
+106,Electronic USD,EUSD
+107,Czodiac USD,CZUSD
+108,Deuterium,d2O
+109,eUSD,EUSD
+11,Pax Dollar,USDP
+110,crvUSD,crvUSD
+111,DAI+,DAI+
+112,USDT+,USDT+
+113,SILK,SILK
+114,CLever USD,clevUSD
+115,R,R
+116,GRAI,GRAI
+117,Ethos Reserve Note,ERN
+118,GHO,GHO
+119,First Digital USD,FDUSD
+12,Neutrino USD,USDN
+120,PayPal USD,PYUSD
+121,PSY,sLSD
+122,GYEN,GYEN
+123,STAR,STAR
+124,peg-eUSD,peUSD
+125,eUSD (V2),eUSD(v2)
+126,mkUSD,mkUSD
+127,Alternity CNY,LCNY
+128,Nexus,NEX
+129,Ondo US Dollar Yield,USDY
+13,YUSD Stablecoin,YUSD
+130,Savvy USD,SVUSD
+131,UAHT,UAHT
+132,USDM,USDM
+133,NARS,NARS
+134,Phase Dollar,CASH
+135,Inter Stable Token,IST
+137,Collateralized Debt Token,CDT
+138,ARYZE eUSD,eUSD
+139,ARYZE eEUR,eEUR
+14,USDD,USDD
+140,ARYZE eGBP,eGBP
+142,HYDT,HYDT
+143,Verified USD,USDV
+144,High Yield USD,HYUSD
+145,CAD Coin,CADC
+146,Ethena USDe,USDe
+147,Anchored Coins AEUR,AEUR
+148,Mynth MyUSD,MyUSD
+149,Sable Coin,USDS
+15,Dola,DOLA
+150,USD Stable Colb,SCB
+151,zkUSD Dollar,zkUSD
+152,Liquid Loans USDL,USDL
+153,Binance Peg BUSD,BUSD
+154,Bucket Protocol BUCK Stablecoin,BUCK
+155,Glo Dollar,USDGLO
+157,VNX Swiss Franc,VCHF
+158,VNX EURO,VEUR
+159,RIF US Dollar,USDRIF
+16,Parrot USD,PAI
+160,Sovryn Dollar,DLLR
+161,Quantoz EURD,EURD
+162,XUSD,XUSD
+163,PrismaLRT Ultra,ULTRA
+164,USDCB,USDCB
+165,AUDD,AUDD
+166,Cygnus Finance Global USD,cgUSD
+167,Fractional ETH,fETH
+168,fxUSD,fxUSD
+169,GAI Stablecoin,GAI
+17,HUSD,HUSD
+170,EURO3,EURO3
+171,Lets Get HAI,HAI
+172,USDB Blast,USDB
+173,BlackRock USD,BUIDL
+174,rUSD,rUSD
+175,PXDC Stablecoin,PXDC
+176,Fathom Dollar,FXD
+177,UNO,UNO
+178,Web 3 Dollar,USD3
+179,CJPY,CJPY
+18,Nexus USD,NUSD
+180,Bread,BREAD
+181,Zunami USD,zunUSD
+182,Zunami ETH,zunETH
+183,Bitcoin USD,BtcUSD
+184,Magma Wen,WEN
+185,Gyroscope GYD,GYD
+186,International Stable Currency,ISC
+187,KNOX Dollar,KNOX
+188,Orby USC,USC
+189,btcUSD,btcUSD
+19,Gemini Dollar,GUSD
+190,Revenue Generating USD,rgUSD
+191,bitSmiley USD,bitUSD
+192,USDA,USDA
+193,Chi USC,USC
+195,Usual USD,USD0
+196,Classic USD,USC
+197,Resolv USD,USR
+198,Stable Jack aUSD,aUSD
+199,Celo Real,CREAL
+2,USD Coin,USDC
+20,Alchemix USD,ALUSD
+200,Hedera Swiss Franc,HCHF
+201,HEX Dollar Coin,HEXDC
+202,Anzen USDz,USDz
+203,Chad USD,cUSD
+204,Balanced Dollars,BNUSD
+205,Agora Dollar,AUSD
+206,Opus CASH,CASH
+207,Dyad,DYAD
+208,Dackie USD,DCKUSD
+209,Sky Dollar,USDS
+21,flexUSD,FLEXUSD
+210,Elixir deUSD,DEUSD
+211,Threshold USD,THUSD
+212,Move Dollar,MOD
+213,M By M^0,M
+214,USDX Money USDX,USDX
+215,Moneta,USDM
+216,Solayer USD,sUSD
+217,Reservoir Stablecoin,rUSD
+218,Satoshi Stablecoin,satUSD
+219,Astherus,USDF
+22,sUSD,SUSD
+220,Avalon USDa,USDA
+221,Ethena USDtb,USDTB
+222,Parallel USD,PAUSD
+223,TREN Debt Token,XY
+224,dTRINITY USD,dUSD
+225,Zoth ZeUSD,ZeUSD
+226,Frankencoin,ZCHF
+227,Legacy BOLD,BOLD
+228,Quill USD,USDQ
+229,Level USD,LVLUSD
+23,Origin Dollar,OUSD
+230,Noon USN,USN
+231,Honey,HONEY
+232,Pinto,PINTO
+233,TheStandard USD,USDS
+234,Worldwide USD,WUSD
+235,Frax USD,FRXUSD
+236,Synnax Stablecoin,syUSD
+237,Hashnote USYC,USYC
+238,Rings scUSD,SCUSD
+239,StablR Euro,EURR
+24,Celo Dollar,CUSD
+240,StablR USD,USDR
+241,OpenDollar USDO,USDO
+242,Hermetica USDh,USDH
+243,Coinshift,csUSDL
+244,Lift Dollar,USDL
+245,Anzens USDA,USDA
+246,Falcon USD,USDf
+247,Schuman EUROP,EUROP
+248,USDFC,USDFC
+249,Brazilian Digital,BRZ
+25,Reserve,RSV
+250,Ripple USD,RLUSD
+251,Felix feUSD,FEUSD
+252,StandX DUSD,DUSD
+253,USBD,USBD
+254,EUR CoinVertible,EURCV
+255,Aegis YUSD,YUSD
+256,Resupply USD,REUSD
+257,OpenEden TBILL,TBILL
+258,A7A5,A7A5
+259,Arche Protocol MSD,MSD
+26,mStable USD,MUSD
+260,VDollar Finance,VUSD
+261,Solomon USDv,USDV
+262,World Liberty Financial USD,USD1
+263,Hex Trust USDX,USDX
+264,XBANKING USDE,USDE
+265,Orki USD,USDK
+266,Plume USD,pUSD
+267,Mead,MEAD
+268,YU,YU
+269,Liquity BOLD,BOLD
+27,USDK,USDK
+270,Franklin Onchain U.S. Government Money Fund,BENJI
+271,Avant USD,avUSD
+272,YLDS,YLDS
+273,Asymmetry USDaf,USDaf
+274,Quantoz EURQ,EURQ
+275,Quantoz USDQ,USDQ
+276,Hyperstable USD,USH
+28,Vai,VAI
+29,TOR,TOR
+3,TerraClassicUSD,USTC
+30,Dollar on Chain,DOC
+31,SpiceUSD,USDS
+32,Sperax USD,USDS
+33,USDP Stablecoin,USDP
+34,USD Balance,USDB
+37,USDJ,USDJ
+38,STBL,STBL
+39,VOLT Protocol,VOLT
+4,Binance USD,BUSD
+40,Rai Reflex Index,RAI
+41,Float Protocol Float,FLOAT
+42,USDX,USDX
+43,ZUSD,ZUSD
+44,dForce USD,USX
+45,aUSD Seed,aSEED
+46,USD+,USD+
+48,BAI Stablecoin,BAI
+49,Euro Tether,EURT
+5,Dai,DAI
+50,EURC,EURC
+51,Stasis Euro,EURS
+52,Celo Euro,CEUR
+53,sEUR,SEUR
+54,USN,USN
+55,EURA,EURA
+56,Parallel,PAR
+57,Hedge USD,USH
+58,3USD,3USD
+59,SigmaUSD,SIGUSD
+6,Frax,FRAX
+60,HomeCoin,HOME
+61,Fixed Income Asset Token,FIAT
+62,PUSd,PUSD
+63,Fantom USD,FUSD
+64,UXD Stablecoin,UXD
+65,USDH,USDH
+66,Frax Price Index,FPI
+67,Bean,BEAN
+68,USDLemma,USDL
+7,TrueUSD,TUSD
+70,DigitalDollar,DUSD
+71,Vesta Stable,VST
+72,Kolibri USD,KUSD
+73,USDtez,USDTZ
+74,Moremoney USD,MONEY
+75,Youves uUSD,UUSD
+76,Interest Protocol,USDI
+78,Note,NOTE
+79,Lista USD,LISUSD
+8,Liquity USD,LUSD
+81,USK,USK
+82,arUSD,ARUSD
+83,USDW,USDW
+84,BOB,BOB
+85,Real USD,USDR
+87,USDi,USDI
+88,iUSD,IUSD
+89,XAI,XAI
+9,Fei USD,FEI
+90,Redeemable USD,RUSD
+91,Iron Bank EURO,IBEUR
+92,Meme Dollar,PINA
+93,Djed StableCoin,DJED
+94,BaoUSD,BAOUSD
+96,Coin98 Dollar,CUSD
+97,USP Stablecoin,USP
+98,EUROe Stablecoin,EUROe
+99,Stabl.fi Cash,CASH

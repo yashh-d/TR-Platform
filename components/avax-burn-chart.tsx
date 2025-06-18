@@ -153,7 +153,7 @@ export function AvaxBurnChart({ network }: AvaxBurnChartProps) {
     if (filteredData.length > 0) {
       const trace = {
         type: "scatter",
-        mode: "lines+markers",
+        mode: "lines",
         name: "AVAX Burned",
         x: filteredData.map(item => item.Date),
         y: filteredData.map(item => parseFloat(item.Burned_Fees_AVAX || '0')),
@@ -161,10 +161,6 @@ export function AvaxBurnChart({ network }: AvaxBurnChartProps) {
           width: 2, 
           color: lineColor,
           shape: 'spline',
-        },
-        marker: {
-          size: 4,
-          color: lineColor,
         },
         hovertemplate: '<b>%{y:.6f} AVAX</b><br>%{x}<extra></extra>',
         hoverlabel: {

@@ -30,20 +30,15 @@ export function BitcoinMiningMetricsChart({
   const [data, setData] = useState<MiningMetricsData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeMetric, setActiveMetric] = useState<'hash_rate' | 'miner_revenue' | 'avg_difficulty' | 'puell_multiple' | 'total_mint' | 'total_fees' | 'miner_income' | 'fee_to_reward_ratio' | 'hash_price'>('hash_rate')
+  const [activeMetric, setActiveMetric] = useState<'miner_revenue' | 'puell_multiple' | 'total_mint' | 'fee_to_reward_ratio'>('miner_revenue')
   const chartRef = useRef<HTMLDivElement>(null)
 
-  // Available metrics for this chart
+  // Available metrics for this chart (removed hash_rate, avg_difficulty, hash_price)
   const availableMetrics = [
-    { id: 'hash_rate', label: 'Hash Rate' },
     { id: 'miner_revenue', label: 'Miner Revenue' },
-    { id: 'avg_difficulty', label: 'Average Difficulty' },
     { id: 'puell_multiple', label: 'Puell Multiple' },
     { id: 'total_mint', label: 'Total Mint' },
-    { id: 'total_fees', label: 'Total Fees' },
-    { id: 'miner_income', label: 'Miner Income' },
-    { id: 'fee_to_reward_ratio', label: 'Fee to Reward Ratio' },
-    { id: 'hash_price', label: 'Hash Price' }
+    { id: 'fee_to_reward_ratio', label: 'Fee to Reward Ratio' }
   ]
 
   useEffect(() => {
@@ -127,15 +122,7 @@ export function BitcoinMiningMetricsChart({
   const formatValue = (value: number | null): string => {
     if (value === null || value === undefined) return '0'
     
-    if (activeMetric === 'hash_rate') {
-      if (value >= 1000000000000000) {
-        return `${(value / 1000000000000000).toFixed(2)} EH/s`
-      } else if (value >= 1000000000000) {
-        return `${(value / 1000000000000).toFixed(2)} TH/s`
-      } else {
-        return `${(value / 1000000000).toFixed(2)} GH/s`
-      }
-    } else if (activeMetric === 'miner_revenue' || activeMetric === 'miner_income' || activeMetric === 'total_fees' || activeMetric === 'hash_price') {
+    if (activeMetric === 'miner_revenue') {
       if (value >= 1000000000) {
         return `$${(value / 1000000000).toFixed(2)}B`
       } else if (value >= 1000000) {
@@ -149,14 +136,6 @@ export function BitcoinMiningMetricsChart({
       return `${value.toFixed(2)} BTC`
     } else if (activeMetric === 'puell_multiple' || activeMetric === 'fee_to_reward_ratio') {
       return value.toFixed(3)
-    } else if (activeMetric === 'avg_difficulty') {
-      if (value >= 1000000000000) {
-        return `${(value / 1000000000000).toFixed(2)}T`
-      } else if (value >= 1000000000) {
-        return `${(value / 1000000000).toFixed(2)}B`
-      } else {
-        return `${(value / 1000000).toFixed(2)}M`
-      }
     } else {
       return value.toFixed(2)
     }
@@ -186,10 +165,8 @@ export function BitcoinMiningMetricsChart({
 
     // Get appropriate tick format based on metric
     let tickFormat = ',.0f'
-    if (activeMetric === 'miner_revenue' || activeMetric === 'miner_income' || activeMetric === 'total_fees' || activeMetric === 'hash_price') {
+    if (activeMetric === 'miner_revenue') {
       tickFormat = '$,.2s'
-    } else if (activeMetric === 'hash_rate') {
-      tickFormat = '.2s'
     } else if (activeMetric === 'puell_multiple' || activeMetric === 'fee_to_reward_ratio') {
       tickFormat = '.3f'
     } else if (activeMetric === 'total_mint') {

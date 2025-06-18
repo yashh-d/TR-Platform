@@ -268,6 +268,8 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
             color: color,
           },
           hovertemplate: "%{y:$,.2f}<extra>%{fullData.name}</extra>",
+          fill: chartType === "individual" ? "tonexty" : undefined,
+          fillcolor: chartType === "individual" ? color + "22" : undefined,
         })
       })
     } else if (chartType === "percentage") {
@@ -343,7 +345,7 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
         orientation: "h",
         y: -0.2,
       },
-      hovermode: "closest",
+      hovermode: "x unified",
       autosize: true,
       margin: {
         l: 60,

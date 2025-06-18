@@ -375,8 +375,32 @@ export function ConsolidatedMetricsChart({
     const { percentage } = calculateChange()
     
     let traces: any[] = []
+    let leftMargin = 60 // Default margin
+    let tickFormat = ',.2f' // Default format
 
     if (metricType === 'price') {
+      // Calculate price range for smart formatting
+      const prices = priceData.map(d => d.price)
+      const maxPrice = Math.max(...prices)
+      
+      // Adjust margin and format based on price range
+      if (maxPrice >= 100000) {
+        leftMargin = 100 // Much more space for 6-digit prices
+        tickFormat = ',.0f' // No decimals for very large prices
+      } else if (maxPrice >= 10000) {
+        leftMargin = 90 // More space for 5-digit prices
+        tickFormat = ',.0f'
+      } else if (maxPrice >= 1000) {
+        leftMargin = 80 // Space for 4-digit prices
+        tickFormat = ',.2f'
+      } else if (maxPrice >= 1) {
+        leftMargin = 70
+        tickFormat = ',.4f'
+      } else {
+        leftMargin = 70
+        tickFormat = ',.6f'
+      }
+
       const lineColor = percentage >= 0 ? '#10B981' : '#EF4444'
       traces = [{
         x: priceData.map(d => new Date(d.timestamp).toISOString()),
@@ -423,15 +447,14 @@ export function ConsolidatedMetricsChart({
           showgrid: true,
           gridcolor: '#e5e5e5',
           tickprefix: '$',
-          tickformat: metricType === 'price' ? ',.2f' : '.2s',
+          tickformat: metricType === 'price' ? tickFormat : '.2s',
           ticksuffix: metricType === 'tvl' ? '' : '',
           hoverformat: metricType === 'price' ? ',.4f' : ',.2f',
-          tickmode: metricType === 'tvl' ? 'auto' : undefined,
-          tickvals: metricType === 'tvl' ? undefined : undefined,
-          ticktext: metricType === 'tvl' ? undefined : undefined
+          tickmode: metricType === 'tvl' ? 'auto' : 'auto',
+          nticks: 8 // Ensure proper tick spacing
         },
         margin: {
-          l: 60,
+          l: leftMargin, // Dynamic left margin based on data range
           r: 40,
           t: 50,
           b: 50

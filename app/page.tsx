@@ -20,6 +20,8 @@ import {
   BarChart3,
   Cpu,
   LineChart,
+  Activity,
+  Send,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -73,6 +75,7 @@ import { supabase } from "@/lib/supabase"
 import { BitcoinNetworkActivityChart } from "@/components/bitcoin-network-activity-chart"
 import { BitcoinMiningMetricsChart } from "@/components/bitcoin-mining-metrics-chart"
 import { BitcoinMarketMetricsChart } from "@/components/bitcoin-market-metrics-chart"
+import { BitcoinHashBlockChart } from "@/components/bitcoin-hashblock-chart"
 import { BitcoinOverviewCards } from "@/components/bitcoin-overview-cards"
 import { EthereumFinancialMetricsChart } from "@/components/ethereum-financial-metrics-chart"
 import { EthereumSupplyMetricsChart } from "@/components/ethereum-supply-metrics-chart"
@@ -82,21 +85,64 @@ import { DexVolumePieChart } from "@/components/dex-volume-pie-chart"
 import { EthereumStablecoinStatsCards } from "@/components/ethereum-stablecoin-stats-cards"
 import { EthereumStablecoinMetricsChart } from "@/components/ethereum-stablecoin-metrics-chart"
 import { EthereumStablecoinBridgingChart } from "@/components/ethereum-stablecoin-bridging-chart"
+import { AaveOperationsChart } from "@/components/aave-operations-chart"
+import { UniswapV4Chart } from "@/components/uniswap-v4-chart"
+import { TotalDexVolumeBarChart } from "@/components/total-dex-volume-bar-chart"
+import { StablecoinBreakdownChart } from "@/components/stablecoin-breakdown-chart"
+
+function CChainMetricCard({ metric, title, icon, colors, formatValue }: { metric: string, title: string, icon: React.ReactNode, colors: string[], formatValue?: (value: number) => string }) {
+  const [value, setValue] = useState<string>("N/A")
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    async function fetchLatest() {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('cchain')
+        .select('value')
+        .eq('metric', metric)
+        .order('date', { ascending: false })
+        .limit(1)
+      if (!error && data && data.length > 0) {
+        const numValue = Number(data[0].value)
+        setValue(formatValue ? formatValue(numValue) : numValue.toLocaleString())
+      } else {
+        setValue("N/A")
+      }
+      setLoading(false)
+    }
+    fetchLatest()
+  }, [metric, formatValue])
+  return (
+    <BentoCardSimple
+      title={title}
+      value={loading ? "Loading..." : value}
+      colors={colors}
+      icon={icon}
+      loading={loading}
+    />
+  )
+}
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("avalanche")
   const [activeSubcategory, setActiveSubcategory] = useState("overview")
 
+  // Format value for display (currency)
+  function formatValue(value: number | null): string {
+    if (value === null || value === undefined) return 'N/A'
+    if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`
+    if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`
+    if (value >= 1e3) return `$${(value / 1e3).toFixed(2)}K`
+    return `$${value.toFixed(2)}`
+  }
+
   // Get subcategory tabs based on active blockchain
   const getSubcategoryTabs = (network: string) => {
-    const commonTabs = ["Overview", "Network", "L1s", "DeFi", "dApps + Protocols", "Stablecoins", "Institutions + RWAs"]
-    
-    // Add Governance tab specifically for Avalanche
     if (network === "avalanche") {
-      return [...commonTabs, "Governance"]
+      return ["Overview", "Network", "L1s", "DeFi", "dApps", "Stablecoins", "Institutions + RWAs", "Governance"]
     }
-    
-    return commonTabs
+    // For Bitcoin and Ethereum, only show Overview and Network
+    return ["Overview", "Network"]
   }
 
   // Map metric values to column names in the database
@@ -152,24 +198,18 @@ export default function Dashboard() {
         }
 
         try {
-          // Get the latest date's total volume from all DEXs
+          // Get the most recent total DEX volume from protocols table
           const { data, error } = await supabase
             .from('avalanche_dex_volumes')
             .select('date, volume')
+            .eq('protocol', 'total')
             .order('date', { ascending: false })
-            .limit(100) // Get recent data to sum up for latest date
+            .limit(1)
 
           if (error) throw error
 
           if (data && data.length > 0) {
-            // Get the most recent date
-            const latestDate = data[0].date
-            
-            // Sum all volumes for the latest date
-            const latestDayVolumes = data.filter(item => item.date === latestDate)
-            const totalVolume = latestDayVolumes.reduce((sum, item) => sum + Number(item.volume), 0)
-            
-            setVolume(totalVolume)
+            setVolume(Number(data[0].volume))
           }
         } catch (err) {
           console.error('Error fetching DEX volume:', err)
@@ -219,6 +259,257 @@ export default function Dashboard() {
     )
   }
 
+  function ProtocolRevenueCard({ network, colors }: { network: string, colors: string[] }) {
+    const [revenue, setRevenue] = useState<number | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+
+    useEffect(() => {
+      async function fetchRevenue() {
+        if (network.toLowerCase() !== "avalanche") {
+          setLoading(false)
+          return
+        }
+        try {
+          // Simulate fetching total protocol revenue for the last day (same as ProtocolMetricsChart)
+          const availableProtocols = [
+            "AAVE V2", "AAVE V3", "Abracadabra Spell", "AirSwap", "Allbridge Classic", 
+            "Allbridge Core", "Apex DeFi", "Balancer V2", "Beefy", "Bellum Exchange", 
+            "Benqi Lending", "Benqi Staked Avax", "BetSwirl", "Blast API", "BlazingApp", 
+            "Chainlink CCIP", "Chainlink Keepers", "Chainlink Requests", "Chainlink VRF V2", 
+            "Coinbase Wallet", "Colony", "Contango V2", "Curve DEX", "deBridge", "Elk", 
+            "Embr Finance", "EMDX", "ERC Burner", "Firebird", "Fjord V2", "Frax Swap", 
+            "Furucombo", "FWX Derivatives", "FWX DEX", "Gamma", "GMX V1", "GMX V2 Perps", 
+            "Gyroscope Protocol", "Impermax V2", "Instadapp Lite", "Iron Bank", "Jeton", 
+            "Joe DEX", "Joe Lend", "Joe V2", "Joe V2.1", "Joe V2.2", "Jumper Exchange", 
+            "Kerberus", "KyberSwap Aggregator", "KyberSwap Classic", "KyberSwap Elastic", 
+            "LI.FI", "Mayan", "MUX Perps", "NTM.ai", "ODOS", "Opensea Seaport", "Pangolin", 
+            "Pharaoh CL", "Pharaoh Legacy", "PinkSale", "PLEXUS", "QiDao", "RadioShack", 
+            "Rainbow", "Ribbon", "SOCKET Protocol", "SolvBTC", "Stargate V1", "Stargate V2", 
+            "SushiSwap", "SushiSwap V3", "Sushi Trident", "Swing", "Synapse", "Teddy Cash", 
+            "The Arena", "Thorchain", "Tornado Cash", "Total", "Trust Wallet", "Uniswap Labs", 
+            "Uniswap V2", "Uniswap V3", "VaporDex V1", "Velora", "Vertex Perps", "vfat.io", 
+            "Wombat Exchange", "WOOFi Swap", "Yield Yak Aggregator"
+          ];
+          // Simulate 1 year of daily data
+          const days = 365;
+          const totalsByDate: Record<string, {total_fees: number, total_revenue: number}> = {};
+          let currentDate = new Date();
+          currentDate.setDate(currentDate.getDate() - days + 1);
+          for (let i = 0; i < days; i++) {
+            const dateStr = currentDate.toISOString().split('T')[0];
+            totalsByDate[dateStr] = {total_fees: 0, total_revenue: 0};
+            availableProtocols.forEach((protocol, index) => {
+              const daysSinceStart = i;
+              const protocolFactor = (index % 5 + 1) * 0.5;
+              const baseFees = 10000 * protocolFactor * (1 + daysSinceStart / 100);
+              const baseRevenue = baseFees * (0.2 + 0.15); // Use a fixed value for determinism
+              const dayOfWeek = currentDate.getDay();
+              const weekendFactor = dayOfWeek === 0 || dayOfWeek === 6 ? 0.8 : 1.2;
+              const randomVariation = 1.0; // Remove randomness for determinism
+              const fees = baseFees * weekendFactor * randomVariation;
+              const revenue = baseRevenue * weekendFactor * randomVariation;
+              totalsByDate[dateStr].total_fees += fees;
+              totalsByDate[dateStr].total_revenue += revenue;
+            });
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+          // Get the latest date's total_revenue
+          const allDates = Object.keys(totalsByDate);
+          const latestDate = allDates[allDates.length - 1];
+          setRevenue(totalsByDate[latestDate].total_revenue);
+        } catch (err) {
+          setError("Failed to load protocol revenue");
+        } finally {
+          setLoading(false);
+        }
+      }
+      fetchRevenue();
+    }, [network]);
+
+    const formatRevenue = (revenue: number): string => {
+      if (revenue >= 1e9) return `$${(revenue / 1e9).toFixed(2)}B`;
+      if (revenue >= 1e6) return `$${(revenue / 1e6).toFixed(2)}M`;
+      if (revenue >= 1e3) return `$${(revenue / 1e3).toFixed(2)}K`;
+      return `$${revenue.toFixed(2)}`;
+    };
+
+    return (
+      <BentoCardSimple
+        title="Protocol Revenue (24h)"
+        value={revenue !== null ? formatRevenue(revenue) : "N/A"}
+        colors={colors}
+        loading={loading}
+        error={error}
+        icon={<DollarSign className="h-4 w-4" />}
+      />
+    );
+  }
+
+  function ProtocolFeesCard({ network, colors }: { network: string, colors: string[] }) {
+    const [fees, setFees] = useState<number | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+
+    useEffect(() => {
+      async function fetchFees() {
+        if (network.toLowerCase() !== "avalanche") {
+          setLoading(false)
+          return
+        }
+        try {
+          // Simulate fetching total protocol fees for the last day (same as ProtocolMetricsChart)
+          const availableProtocols = [
+            "AAVE V2", "AAVE V3", "Abracadabra Spell", "AirSwap", "Allbridge Classic", 
+            "Allbridge Core", "Apex DeFi", "Balancer V2", "Beefy", "Bellum Exchange", 
+            "Benqi Lending", "Benqi Staked Avax", "BetSwirl", "Blast API", "BlazingApp", 
+            "Chainlink CCIP", "Chainlink Keepers", "Chainlink Requests", "Chainlink VRF V2", 
+            "Coinbase Wallet", "Colony", "Contango V2", "Curve DEX", "deBridge", "Elk", 
+            "Embr Finance", "EMDX", "ERC Burner", "Firebird", "Fjord V2", "Frax Swap", 
+            "Furucombo", "FWX Derivatives", "FWX DEX", "Gamma", "GMX V1", "GMX V2 Perps", 
+            "Gyroscope Protocol", "Impermax V2", "Instadapp Lite", "Iron Bank", "Jeton", 
+            "Joe DEX", "Joe Lend", "Joe V2", "Joe V2.1", "Joe V2.2", "Jumper Exchange", 
+            "Kerberus", "KyberSwap Aggregator", "KyberSwap Classic", "KyberSwap Elastic", 
+            "LI.FI", "Mayan", "MUX Perps", "NTM.ai", "ODOS", "Opensea Seaport", "Pangolin", 
+            "Pharaoh CL", "Pharaoh Legacy", "PinkSale", "PLEXUS", "QiDao", "RadioShack", 
+            "Rainbow", "Ribbon", "SOCKET Protocol", "SolvBTC", "Stargate V1", "Stargate V2", 
+            "SushiSwap", "SushiSwap V3", "Sushi Trident", "Swing", "Synapse", "Teddy Cash", 
+            "The Arena", "Thorchain", "Tornado Cash", "Total", "Trust Wallet", "Uniswap Labs", 
+            "Uniswap V2", "Uniswap V3", "VaporDex V1", "Velora", "Vertex Perps", "vfat.io", 
+            "Wombat Exchange", "WOOFi Swap", "Yield Yak Aggregator"
+          ];
+          // Simulate 1 year of daily data
+          const days = 365;
+          const totalsByDate: Record<string, {total_fees: number, total_revenue: number}> = {};
+          let currentDate = new Date();
+          currentDate.setDate(currentDate.getDate() - days + 1);
+          for (let i = 0; i < days; i++) {
+            const dateStr = currentDate.toISOString().split('T')[0];
+            totalsByDate[dateStr] = {total_fees: 0, total_revenue: 0};
+            availableProtocols.forEach((protocol, index) => {
+              const daysSinceStart = i;
+              const protocolFactor = (index % 5 + 1) * 0.5;
+              const baseFees = 10000 * protocolFactor * (1 + daysSinceStart / 100);
+              const baseRevenue = baseFees * (0.2 + 0.15); // Use a fixed value for determinism
+              const dayOfWeek = currentDate.getDay();
+              const weekendFactor = dayOfWeek === 0 || dayOfWeek === 6 ? 0.8 : 1.2;
+              const randomVariation = 1.0; // Remove randomness for determinism
+              const fees = baseFees * weekendFactor * randomVariation;
+              totalsByDate[dateStr].total_fees += fees;
+              totalsByDate[dateStr].total_revenue += baseRevenue * weekendFactor * randomVariation;
+            });
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+          // Get the latest date's total_fees
+          const allDates = Object.keys(totalsByDate);
+          const latestDate = allDates[allDates.length - 1];
+          setFees(totalsByDate[latestDate].total_fees);
+        } catch (err) {
+          setError("Failed to load protocol fees");
+        } finally {
+          setLoading(false);
+        }
+      }
+      fetchFees();
+    }, [network]);
+
+    const formatFees = (fees: number): string => {
+      if (fees >= 1e9) return `$${(fees / 1e9).toFixed(2)}B`;
+      if (fees >= 1e6) return `$${(fees / 1e6).toFixed(2)}M`;
+      if (fees >= 1e3) return `$${(fees / 1e3).toFixed(2)}K`;
+      return `$${fees.toFixed(2)}`;
+    };
+
+    return (
+      <BentoCardSimple
+        title="Protocol Fees (24h)"
+        value={fees !== null ? formatFees(fees) : "N/A"}
+        colors={colors}
+        loading={loading}
+        error={error}
+        icon={<DollarSign className="h-4 w-4" />}
+      />
+    );
+  }
+
+  function DexCountCard({ network, colors }: { network: string, colors: string[] }) {
+    const [count, setCount] = useState<number | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+
+    useEffect(() => {
+      async function fetchDexCount() {
+        if (network.toLowerCase() !== "avalanche") {
+          setLoading(false)
+          return
+        }
+        try {
+          // Simulate DEX count (replace with real fetch if available)
+          setCount(18) // Replace with real fetch logic
+        } catch (err) {
+          setError("Failed to load DEX count")
+        } finally {
+          setLoading(false)
+        }
+      }
+      fetchDexCount()
+    }, [network])
+
+    return (
+      <BentoCardSimple
+        title="Number of DEXs"
+        value={count !== null ? count.toString() : "N/A"}
+        colors={colors}
+        loading={loading}
+        error={error}
+        icon={<BarChart3 className="h-4 w-4" />}
+      />
+    )
+  }
+
+  // --- Add this hook to fetch latest RWA Value for Avalanche ---
+  function useLatestRwaValue() {
+    const [value, setValue] = useState<number | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+    useEffect(() => {
+      async function fetchLatest() {
+        setLoading(true)
+        setError(null)
+        try {
+          const RWA_TOKENS = [
+            "bIB01", "BENJI", "WTSYX", "FLTTX", "WTSTX", "WTLGX", "WTTSX", "TIPSX", "WTGXX", "BUIDL", "XTBT", "XEVT", "bCSPX", "SKHC", "PARAVII", "NOTE", "XRV", "ACRED", "EQTYX", "MODRX", "LNGVX", "WTSIX", "SPXUX", "TECHX", "RE", "VBILL", "XFTB"
+          ];
+          const { data: rows, error } = await supabase
+            .from('rwa_ava2')
+            .select('Date,' + RWA_TOKENS.join(','))
+            .order('Date', { ascending: false })
+            .limit(1)
+          if (error) throw error
+          if (!rows || rows.length === 0) {
+            setValue(null)
+            return
+          }
+          const row: Record<string, any> = rows[0]
+          let sum = 0
+          for (const token of RWA_TOKENS) {
+            sum += Number(row[token] || 0)
+          }
+          setValue(sum)
+        } catch (err) {
+          setError('Failed to fetch RWA Value')
+        } finally {
+          setLoading(false)
+        }
+      }
+      fetchLatest()
+    }, [])
+    return { value, loading, error }
+  }
+
+  // At the top of your Dashboard component:
+  const rwaValueHook = useLatestRwaValue();
+
   return (
     <div className="flex h-screen flex-col">
       {/* Top Navigation */}
@@ -263,7 +554,7 @@ export default function Dashboard() {
               {getSubcategoryTabs(activeTab).map((subcategory) => (
                 <Button
                   key={subcategory}
-                  variant={activeSubcategory === subcategory.toLowerCase() ? "default" : "ghost"}
+                  variant={activeSubcategory.toLowerCase() === subcategory.toLowerCase() ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setActiveSubcategory(subcategory.toLowerCase())}
                 >
@@ -365,12 +656,12 @@ export default function Dashboard() {
                   // Bitcoin-specific overview content
                   <>
                     {/* Bitcoin Metrics Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+                    <div className="grid grid-cols-4 gap-6 mb-8">
                       <BitcoinOverviewCards network={activeTab} colors={getNetworkColors(activeTab)} />
                     </div>
 
                     {/* Additional Network Metrics */}
-                    <div className="grid grid-cols-6 gap-4 mb-8">
+                    <div className="grid grid-cols-4 gap-6 mb-8">
                       <OverviewNetworkMetricsCards network={activeTab} colors={getNetworkColors(activeTab)} />
                     </div>
 
@@ -380,7 +671,7 @@ export default function Dashboard() {
                     </div>
 
                     {/* Bitcoin Network Activity Chart */}
-                    <div className="mb-8">
+                    <div className="mb-8 mt-12">
                       <BitcoinNetworkActivityChart network={activeTab} />
                     </div>
 
@@ -393,12 +684,17 @@ export default function Dashboard() {
                     <div className="mb-8">
                       <BitcoinMarketMetricsChart network={activeTab} />
                     </div>
+
+                    {/* Bitcoin Hash Block Chart */}
+                    <div className="mb-8">
+                      <BitcoinHashBlockChart />
+                    </div>
                   </>
                 ) : (
                   // Default overview content for other networks
                   <>
                     {/* Metrics Cards */}
-                    <div className="grid grid-cols-6 gap-4 mb-8">
+                    <div className="grid grid-cols-4 gap-6 mb-8">
                       <OverviewMetricsCards network={activeTab} colors={getNetworkColors(activeTab)} />
                       <OverviewNetworkMetricsCards network={activeTab} colors={getNetworkColors(activeTab)} />
                     </div>
@@ -466,12 +762,14 @@ export default function Dashboard() {
               <div>
                 <h2 className="text-lg font-bold mb-4">Network Metrics</h2>
                 
-                {/* Replace the static cards with the dynamic component */}
+                {/* Place AvalancheNetworkStats and StakingDistributionPieChart side by side */}
                 {activeTab === "avalanche" && (
-                  <AvalancheNetworkStats 
-                    network={activeTab} 
-                    colors={getNetworkColors(activeTab)}
-                  />
+                  <div className="mb-8">
+                    <AvalancheNetworkStats 
+                      network={activeTab} 
+                      colors={getNetworkColors(activeTab)}
+                    />
+                  </div>
                 )}
                 
                 {/* Add Ethereum Network Activity Chart for Ethereum */}
@@ -481,10 +779,15 @@ export default function Dashboard() {
                   </div>
                 )}
                 
-                {/* Add the comprehensive NetworkStatsChart */}
+                {/* Add the comprehensive NetworkStatsChart and StakingDistributionPieChart side by side */}
                 {activeTab === "avalanche" && (
-                  <div className="mb-8">
-                    <NetworkStatsChart network={activeTab} metric="avgGps" />
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <div className="col-span-2">
+                      <NetworkStatsChart network={activeTab} metric="avgGps" />
+                    </div>
+                    <div className="col-span-1">
+                      <StakingDistributionPieChart network={activeTab} />
+                    </div>
                   </div>
                 )}
                 
@@ -515,13 +818,6 @@ export default function Dashboard() {
                     <AvaxBurnChart network={activeTab} />
                   </div>
                 )}
-                
-                {/* Add Staking Distribution Pie Chart for Avalanche network */}
-                {activeTab === "avalanche" && (
-                  <div className="mb-8">
-                    <StakingDistributionPieChart network={activeTab} />
-                  </div>
-                )}
               </div>
             )}
 
@@ -531,25 +827,27 @@ export default function Dashboard() {
                 
                 <div className="grid grid-cols-3 gap-4 mb-8">
                   <div>
-                    <BentoCardSimple
-                      title="Chain Uptime"
-                      value="99.99%"
-                      colors={getNetworkColors(activeTab)}
-                      icon={<Check className="h-4 w-4" />}
-                    />
-                  </div>
-                  <div>
-                    <BentoCardSimple
-                      title="Validator Count"
-                      value={activeTab === "ethereum" ? "889,423" : "1,024"}
-                      colors={getNetworkColors(activeTab)}
-                      icon={<Shield className="h-4 w-4" />}
-                    />
-                  </div>
-                  <div>
                     <SubnetCountCard 
                       network={activeTab} 
                       colors={getNetworkColors(activeTab)} 
+                    />
+                  </div>
+                  <div>
+                    <CChainMetricCard 
+                      metric="txCount" 
+                      title="C-Chain Transaction Count" 
+                      icon={<Activity className="h-4 w-4" />} 
+                      colors={getNetworkColors(activeTab)} 
+                      formatValue={(v) => v >= 1e6 ? `${(v / 1e6).toFixed(2)}M` : v.toLocaleString()}
+                    />
+                  </div>
+                  <div>
+                    <CChainMetricCard 
+                      metric="activeAddresses" 
+                      title="C-Chain Active Addresses" 
+                      icon={<Users className="h-4 w-4" />} 
+                      colors={getNetworkColors(activeTab)} 
+                      formatValue={(v) => v >= 1e3 ? `${(v / 1e3).toFixed(2)}K` : v.toLocaleString()}
                     />
                   </div>
                 </div>
@@ -577,27 +875,18 @@ export default function Dashboard() {
                 <h2 className="text-lg font-bold mb-4">DeFi Ecosystem</h2>
                 
                 {/* DeFi Overview Cards */}
-                <div className="grid grid-cols-3 gap-4 mb-8">
-                  <div>
-                    <BentoCardSimple
-                      title="Total Value Locked"
-                      value="$8.95B"
-                      subtitle="+0.75% in 24h ago"
-                      colors={getNetworkColors(activeTab)}
-                      icon={<Coins className="h-4 w-4" />}
-                    />
-                  </div>
-                  <div>
-                    <BentoCardSimple
-                      title="Active Protocols"
-                      value="156"
-                      subtitle="+2 new this week"
-                      colors={getNetworkColors(activeTab)}
-                      icon={<Package className="h-4 w-4" />}
-                    />
-                  </div>
+                <div className="grid grid-cols-3 md:grid-cols-4 gap-4 mb-8">
                   <div>
                     <DexVolumeCard network={activeTab} colors={getNetworkColors(activeTab)} />
+                  </div>
+                  <div>
+                    <DexCountCard network={activeTab} colors={getNetworkColors(activeTab)} />
+                  </div>
+                  <div>
+                    <ProtocolRevenueCard network={activeTab} colors={getNetworkColors(activeTab)} />
+                  </div>
+                  <div>
+                    <ProtocolFeesCard network={activeTab} colors={getNetworkColors(activeTab)} />
                   </div>
                 </div>
                 
@@ -614,22 +903,40 @@ export default function Dashboard() {
                   </div>
                 </div>
                 
-                {/* Protocol TVL Chart */}
-                <div className="mb-8">
-                  <h3 className="text-md font-semibold mb-2">Total Value Locked Over Time</h3>
-                  <ProtocolTVLChart network={activeTab} />
+                {/* Protocol TVL Chart and Protocol Metrics Chart side by side */}
+                <div className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <ProtocolTVLChart network={activeTab} />
+                  </div>
+                  <div>
+                    <ProtocolMetricsChart network={activeTab} />
+                  </div>
                 </div>
                 
-                {/* DEX Trading Volume */}
-                <div className="mb-8">
-                  <h3 className="text-md font-semibold mb-2">DEX Trading Volume</h3>
-                  <DexVolumeChart network={activeTab} />
-                </div>
+                {/* Total DEX Volume Bar Chart - Only for Avalanche */}
+                {activeTab === "avalanche" && (
+                  <div className="mb-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div>
+                        <TotalDexVolumeBarChart network={activeTab} onlyTotal />
+                      </div>
+                      <div>
+                        <TotalDexVolumeBarChart network={activeTab} />
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
-                {/* Protocol Metrics Chart */}
-                <div className="mb-8">
-                  <h3 className="text-md font-semibold mb-2">Protocol Performance Metrics</h3>
-                  <ProtocolMetricsChart network={activeTab} />
+                {/* Aave v3 Operations Chart and Uniswap V4 Chart side by side */}
+                <div className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-md font-semibold mb-2">Aave v3 Lending</h3>
+                    <AaveOperationsChart network={activeTab} />
+                  </div>
+                  <div>
+                    <h3 className="text-md font-semibold mb-2">Uniswap V4 Liquidity</h3>
+                    <UniswapV4Chart network={activeTab} />
+                  </div>
                 </div>
                 
                 {/* DeFi Protocols Table */}
@@ -648,7 +955,7 @@ export default function Dashboard() {
               </div>
             )}
 
-            {activeSubcategory === "dapps + protocols" && (
+            {activeSubcategory === "dapps" && (
               <div>
                 <h2 className="text-lg font-bold mb-4">dApps & Protocols</h2>
                 <div className="grid grid-cols-6 gap-4 mb-8">
@@ -656,15 +963,6 @@ export default function Dashboard() {
                     <AvalacheDAppsStats 
                       network={activeTab} 
                       colors={getNetworkColors(activeTab)} 
-                    />
-                  </div>
-                  <div className="col-span-3">
-                    <BentoCardSimple
-                      title="Total Value Locked"
-                      value="$8.95B"
-                      subtitle="+0.75% in 24h ago"
-                      colors={getNetworkColors(activeTab)}
-                      icon={<Coins className="h-4 w-4" />}
                     />
                   </div>
                 </div>
@@ -675,25 +973,6 @@ export default function Dashboard() {
                     <h3 className="text-md font-semibold mb-2">dApp Categories</h3>
                     <DAppsCategoryChart network={activeTab} />
                   </div>
-                  <div>
-                    <h3 className="text-md font-semibold mb-2">Top Protocols</h3>
-                    <TopProtocolsTVLChart network={activeTab} />
-                  </div>
-                </div>
-                
-                {/* TVL Chart - Replace with new component */}
-                <div className="mb-8">
-                  <ProtocolTVLChart network={activeTab} />
-                </div>
-                
-                {/* Debug component - temporary */}
-                <div className="mb-8">
-                  <ProtocolDebug network={activeTab} />
-                </div>
-                
-                {/* Protocol Metrics Chart */}
-                <div className="mb-8">
-                  <ProtocolMetricsChart network={activeTab} />
                 </div>
                 
                 <div className="mb-8">
@@ -706,19 +985,12 @@ export default function Dashboard() {
                   <h3 className="text-md font-semibold mb-2">Top DeFi Protocols</h3>
                   <AvalancheDeFiTable network={activeTab} />
                 </div>
-                
-                {/* DEX volume chart */}
-                <div className="mb-8">
-                  <h3 className="text-md font-semibold mb-2">DEX Volumes</h3>
-                  <DexVolumeChart network={activeTab} />
-                </div>
               </div>
             )}
 
             {activeSubcategory === "stablecoins" && (
               <div>
                 <h2 className="text-lg font-bold mb-4">Stablecoins</h2>
-                
                 {/* Use Ethereum-specific components for Ethereum, otherwise use the generic ones */}
                 {activeTab === "ethereum" ? (
                   <>
@@ -726,12 +998,10 @@ export default function Dashboard() {
                     <div className="grid grid-cols-6 gap-4 mb-8">
                       <EthereumStablecoinStatsCards network={activeTab} colors={getNetworkColors(activeTab)} />
                     </div>
-                    
                     {/* Ethereum Stablecoin Metrics Chart with toggle */}
                     <div className="mb-8">
                       <EthereumStablecoinMetricsChart network={activeTab} />
                     </div>
-                    
                     {/* Ethereum Stablecoin Bridging Chart */}
                     <div className="mb-8">
                       <EthereumStablecoinBridgingChart network={activeTab} />
@@ -741,11 +1011,13 @@ export default function Dashboard() {
                   <>
                     {/* Replace the static grid with the dynamic component */}
                     <StablecoinStatsCards network={activeTab} colors={getNetworkColors(activeTab)} />
-                    
+                    {/* Stablecoin Breakdown Chart (NEW) */}
+                    <div className="mb-8">
+                      <StablecoinBreakdownChart network={activeTab} />
+                    </div>
                     <div className="mb-8">
                       <StablecoinMetricsChart network={activeTab} />
                     </div>
-                    
                     <div className="mb-8">
                       <StablecoinBridgingChart network={activeTab} />
                     </div>
@@ -757,34 +1029,70 @@ export default function Dashboard() {
             {activeSubcategory === "institutions + rwas" && (
               <div>
                 <h2 className="text-lg font-bold mb-4">Institutions & RWAs</h2>
-                <div className="grid grid-cols-6 gap-4 mb-8">
-                  <div className="col-span-2">
-                    <BentoCardSimple
-                      title="RWA Value"
-                      value="$169.29M"
-                      subtitle="+1.56% in 24h ago"
-                      colors={getNetworkColors(activeTab)}
-                      icon={<DollarSign className="h-4 w-4" />}
-                    />
+                {/* Fetch latest RWA Value for the card */}
+                {activeTab === "avalanche" ? (
+                  <div className="grid grid-cols-6 gap-4 mb-8">
+                    <div className="col-span-2">
+                      <BentoCardSimple
+                        title="RWA Value"
+                        value={activeTab === "avalanche"
+                          ? formatValue(rwaValueHook?.value ?? null)
+                          : "N/A"}
+                        subtitle={activeTab === "avalanche"
+                          ? (rwaValueHook?.loading ? "" : rwaValueHook?.error ? "Failed to load" : "Latest value")
+                          : ""}
+                        colors={getNetworkColors(activeTab)}
+                        icon={<DollarSign className="h-4 w-4" />}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <BentoCardSimple
+                        title="RWA Holders"
+                        value="7,588"
+                        subtitle="+0.04% in 24h ago"
+                        colors={getNetworkColors(activeTab)}
+                        icon={<Users className="h-4 w-4" />}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <BentoCardSimple
+                        title="RWA Asset Count"
+                        value="25"
+                        colors={getNetworkColors(activeTab)}
+                        icon={<Package className="h-4 w-4" />}
+                      />
+                    </div>
                   </div>
-                  <div className="col-span-2">
-                    <BentoCardSimple
-                      title="RWA Holders"
-                      value="7,588"
-                      subtitle="+0.04% in 24h ago"
-                      colors={getNetworkColors(activeTab)}
-                      icon={<Users className="h-4 w-4" />}
-                    />
+                ) : (
+                  <div className="grid grid-cols-6 gap-4 mb-8">
+                    <div className="col-span-2">
+                      <BentoCardSimple
+                        title="RWA Value"
+                        value="N/A"
+                        subtitle=""
+                        colors={getNetworkColors(activeTab)}
+                        icon={<DollarSign className="h-4 w-4" />}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <BentoCardSimple
+                        title="RWA Holders"
+                        value="7,588"
+                        subtitle="+0.04% in 24h ago"
+                        colors={getNetworkColors(activeTab)}
+                        icon={<Users className="h-4 w-4" />}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <BentoCardSimple
+                        title="RWA Asset Count"
+                        value="25"
+                        colors={getNetworkColors(activeTab)}
+                        icon={<Package className="h-4 w-4" />}
+                      />
+                    </div>
                   </div>
-                  <div className="col-span-2">
-                    <BentoCardSimple
-                      title="RWA Asset Count"
-                      value="25"
-                      colors={getNetworkColors(activeTab)}
-                      icon={<Package className="h-4 w-4" />}
-                    />
-                  </div>
-                </div>
+                )}
 
                 {/* Add the RWA Metrics Chart */}
                 <div className="mb-8">
@@ -806,16 +1114,6 @@ export default function Dashboard() {
                 <h2 className="text-lg font-bold mb-4">Avalanche Governance</h2>
                 
                 <GovernanceStatusCards colors={getNetworkColors(activeTab)} />
-                
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                  <div>
-                    <h3 className="text-md font-semibold mb-2">Proposal History</h3>
-                    <PlotlyChart network={activeTab} metric="proposalVotes" />
-                  </div>
-                  <div>
-                    <StakingDistributionPieChart network={activeTab} />
-                  </div>
-                </div>
                 
                 <div className="mb-8">
                   <h3 className="text-md font-semibold mb-2">Avalanche Community Proposals</h3>
