@@ -30,7 +30,6 @@ export function StablecoinMetricsChart({
   const [stablecoinData, setStablecoinData] = useState<StablecoinData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [chartType, setChartType] = useState<"total" | "bridged">(metric)
   const chartRef = useRef<HTMLDivElement>(null)
   
   useEffect(() => {
@@ -67,7 +66,8 @@ export function StablecoinMetricsChart({
             break
           case '1Y':
           default:
-            filterDate.setFullYear(currentDate.getFullYear() - 1)
+            // More reliable way to calculate 1 year ago
+            filterDate = new Date(currentDate.getFullYear() - 1, currentDate.getMonth(), currentDate.getDate())
             break
         }
         
@@ -126,25 +126,14 @@ export function StablecoinMetricsChart({
   // Get title based on chart type
   const getChartTitle = (): string => {
     if (title) return title
-    
-    switch (chartType) {
-      case "total":
-        return "Total Circulating Stablecoins on Avalanche"
-      case "bridged":
-        return "Total Bridged Stablecoins to Avalanche"
-      default:
-        return "Stablecoin Metrics"
-    }
+    return "Circulating Stablecoins on Avalanche"
   }
   
   // Create Plotly chart data
   const createChartData = () => {
-    // Base trace configuration
-    const traces = []
-    
-    if (chartType === "total") {
-      // Add total circulating traces
-      traces.push({
+    // Always show total circulating traces
+    const traces = [
+      {
         x: stablecoinData.map(d => d.date),
         y: stablecoinData.map(d => d.total_circulating_usd_all),
         type: 'scatter',
@@ -154,21 +143,19 @@ export function StablecoinMetricsChart({
           color: '#E84142',
           width: 3
         }
-      })
-      
-      traces.push({
+      },
+      {
         x: stablecoinData.map(d => d.date),
         y: stablecoinData.map(d => d.total_circulating_usd_usdt),
         type: 'scatter',
         mode: 'lines',
         name: 'USDT',
         line: {
-          color: '#26A17B',
+          color: '#00D4AA',
           width: 2
         }
-      })
-      
-      traces.push({
+      },
+      {
         x: stablecoinData.map(d => d.date),
         y: stablecoinData.map(d => d.total_circulating_usd_usdc),
         type: 'scatter',
@@ -178,47 +165,8 @@ export function StablecoinMetricsChart({
           color: '#2775CA',
           width: 2
         }
-      })
-    }
-    
-    if (chartType === "bridged") {
-      // Add bridged traces
-      traces.push({
-        x: stablecoinData.map(d => d.date),
-        y: stablecoinData.map(d => d.total_bridged_to_usd_all),
-        type: 'scatter',
-        mode: 'lines',
-        name: 'Total Bridged',
-        line: {
-          color: '#E84142',
-          width: 3
-        }
-      })
-      
-      traces.push({
-        x: stablecoinData.map(d => d.date),
-        y: stablecoinData.map(d => d.total_bridged_to_usd_usdt),
-        type: 'scatter',
-        mode: 'lines',
-        name: 'USDT Bridged',
-        line: {
-          color: '#26A17B',
-          width: 2
-        }
-      })
-      
-      traces.push({
-        x: stablecoinData.map(d => d.date),
-        y: stablecoinData.map(d => d.total_bridged_to_usd_usdc),
-        type: 'scatter',
-        mode: 'lines',
-        name: 'USDC Bridged',
-        line: {
-          color: '#2775CA',
-          width: 2
-        }
-      })
-    }
+      }
+    ]
     
     return {
       data: traces,
@@ -284,16 +232,11 @@ export function StablecoinMetricsChart({
         })
       }
     }
-  }, [loading, error, stablecoinData, chartType, timeRange])
+  }, [loading, error, stablecoinData, timeRange])
   
   // Handle time range change
   const handleTimeRangeChange = (range: string) => {
     setTimeRange(range)
-  }
-  
-  // Handle chart type change
-  const handleChartTypeChange = (type: "total" | "bridged") => {
-    setChartType(type)
   }
 
   if (loading) {
@@ -357,26 +300,6 @@ export function StablecoinMetricsChart({
         <h2 className="text-lg font-bold">{getChartTitle()}</h2>
         
         <div className="flex items-center space-x-2 mt-2 sm:mt-0">
-          {/* Chart Type Selector */}
-          <div className="flex space-x-1">
-            <Button 
-              variant={chartType === "total" ? "default" : "outline"} 
-              size="sm"
-              onClick={() => handleChartTypeChange("total")}
-              className="text-xs"
-            >
-              Circulating
-            </Button>
-            <Button 
-              variant={chartType === "bridged" ? "default" : "outline"} 
-              size="sm"
-              onClick={() => handleChartTypeChange("bridged")}
-              className="text-xs"
-            >
-              Bridged
-            </Button>
-          </div>
-          
           {/* Time Range Selector */}
           <div className="flex space-x-1">
             <Button 
@@ -420,7 +343,7 @@ export function StablecoinMetricsChart({
       </div>
       
       {/* Current Values Display */}
-      <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gray-50 p-3 rounded-md">
           <div className="text-sm text-gray-500">Total Circulating</div>
           <div className="text-lg font-bold">
@@ -437,12 +360,6 @@ export function StablecoinMetricsChart({
           <div className="text-sm text-gray-500">USDC Circulating</div>
           <div className="text-lg font-bold">
             {formatValue(latestData?.total_circulating_usd_usdc || 0)}
-          </div>
-        </div>
-        <div className="bg-gray-50 p-3 rounded-md">
-          <div className="text-sm text-gray-500">Total Bridged</div>
-          <div className="text-lg font-bold">
-            {formatValue(latestData?.total_bridged_to_usd_all || 0)}
           </div>
         </div>
       </div>

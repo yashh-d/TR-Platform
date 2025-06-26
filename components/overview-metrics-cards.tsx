@@ -42,6 +42,11 @@ export function OverviewMetricsCards({ network, colors }: OverviewMetricsCardsPr
   const [previousMarketCap, setPreviousMarketCap] = useState<number | null>(null)
   const [previousSupply, setPreviousSupply] = useState<number | null>(null)
 
+  // Don't render for Core DAO - it has its own component
+  if (network.toLowerCase() === "core") {
+    return null
+  }
+
   // Map network names to API identifiers
   const getChainId = (network: string): string => {
     switch (network.toLowerCase()) {
@@ -206,30 +211,46 @@ export function OverviewMetricsCards({ network, colors }: OverviewMetricsCardsPr
     supply: { current: number | null, previous: number | null }
   }> => {
     try {
-      const slug = getCMCSlug(network)
-      
-      // Call our API route that handles CoinMarketCap API
-      const response = await fetch(`/api/coinmarketcap?slug=${slug}`)
-      if (response.ok) {
-        const data = await response.json()
-        if (data && data.success && data.data) {
-          const coinData = data.data[0] // First result should be our coin
-          console.log('Received coin data:', coinData)
-          
-          // V2 API structure
-          const marketCap = coinData.quote?.USD?.market_cap || null
-          const circulatingSupply = coinData.circulating_supply || null
-          
-          console.log('Parsed values:', { marketCap, circulatingSupply })
+      // For Core DAO, use CoinGecko API directly instead of CoinMarketCap
+      if (network.toLowerCase() === "core") {
+        const response = await fetch(`https://api.coingecko.com/api/v3/coins/coredaoorg?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`)
+        if (response.ok) {
+          const data = await response.json()
+          const marketCap = data.market_data?.market_cap?.usd || null
+          const circulatingSupply = data.market_data?.circulating_supply || null
           
           return {
-            marketCap: { current: marketCap, previous: null }, // CMC doesn't provide historical in basic call
+            marketCap: { current: marketCap, previous: null },
             supply: { current: circulatingSupply, previous: null }
+          }
+        }
+      } else {
+        // Use CoinMarketCap for other networks
+        const slug = getCMCSlug(network)
+        
+        // Call our API route that handles CoinMarketCap API
+        const response = await fetch(`/api/coinmarketcap?slug=${slug}`)
+        if (response.ok) {
+          const data = await response.json()
+          if (data && data.success && data.data) {
+            const coinData = data.data[0] // First result should be our coin
+            console.log('Received coin data:', coinData)
+            
+            // V2 API structure
+            const marketCap = coinData.quote?.USD?.market_cap || null
+            const circulatingSupply = coinData.circulating_supply || null
+            
+            console.log('Parsed values:', { marketCap, circulatingSupply })
+            
+            return {
+              marketCap: { current: marketCap, previous: null }, // CMC doesn't provide historical in basic call
+              supply: { current: circulatingSupply, previous: null }
+            }
           }
         }
       }
     } catch (err) {
-      console.warn('Error fetching CoinMarketCap data:', err)
+      console.warn('Error fetching market cap and supply data:', err)
     }
     
     return {

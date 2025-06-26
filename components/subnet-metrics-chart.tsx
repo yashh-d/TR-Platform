@@ -41,12 +41,12 @@ interface BlockchainOption {
 const availableMetrics = [
   { id: "activeAddresses", label: "Active Addresses" },
   { id: "activeSenders", label: "Active Senders" },
+  { id: "txCount", label: "Transaction Count" },
   { id: "cumulativeTxCount", label: "Cumulative Tx Count" },
   { id: "cumulativeAddresses", label: "Cumulative Addresses" },
   { id: "cumulativeContracts", label: "Cumulative Contracts" },
   { id: "cumulativeDeployers", label: "Cumulative Deployers" },
   { id: "gasUsed", label: "Gas Used" },
-  { id: "txCount", label: "Transaction Count" },
   { id: "avgGps", label: "Avg GPS" },
   { id: "maxGps", label: "Max GPS" },
   { id: "avgTps", label: "Avg TPS" },
@@ -62,7 +62,7 @@ export function SubnetMetricsChart({ subnet }: SubnetMetricsChartProps) {
   const [availableBlockchains, setAvailableBlockchains] = useState<BlockchainOption[]>([])
   const [selectedBlockchain, setSelectedBlockchain] = useState<string>("")
   const [selectedMetric, setSelectedMetric] = useState<string>("activeAddresses")
-  const [timeRange, setTimeRange] = useState<string>("1M")
+  const [timeRange, setTimeRange] = useState<string>("6M")
   const [chartData, setChartData] = useState<BlockchainMetric[]>([])
   const [chartLoading, setChartLoading] = useState(false)
   const [aggregationMode, setAggregationMode] = useState<"sum" | "avg">("sum")
@@ -155,8 +155,8 @@ export function SubnetMetricsChart({ subnet }: SubnetMetricsChartProps) {
           case "1W":
             startDate.setDate(now.getDate() - 7)
             break
-          case "1M":
-            startDate.setMonth(now.getMonth() - 1)
+          case "30D":
+            startDate.setDate(now.getDate() - 30)
             break
           case "3M":
             startDate.setMonth(now.getMonth() - 3)
@@ -240,7 +240,7 @@ export function SubnetMetricsChart({ subnet }: SubnetMetricsChartProps) {
     return (
       <Card className="p-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">Subnet Metrics</h2>
+          <h2 className="text-lg font-bold">L1 Metrics</h2>
           <Button variant="outline" size="sm" className="text-xs">
             <Download className="h-3 w-3 mr-1" />
             Download
@@ -257,7 +257,7 @@ export function SubnetMetricsChart({ subnet }: SubnetMetricsChartProps) {
     return (
       <Card className="p-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">Subnet Metrics</h2>
+          <h2 className="text-lg font-bold">L1 Metrics</h2>
           <Button variant="outline" size="sm" className="text-xs">
             <Download className="h-3 w-3 mr-1" />
             Download
@@ -276,7 +276,7 @@ export function SubnetMetricsChart({ subnet }: SubnetMetricsChartProps) {
   return (
     <Card className="p-4 mb-8">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold">Subnet Metrics</h2>
+        <h2 className="text-lg font-bold">L1 Metrics</h2>
         <Button variant="outline" size="sm" className="text-xs">
           <Download className="h-3 w-3 mr-1" />
           Download
@@ -295,8 +295,8 @@ export function SubnetMetricsChart({ subnet }: SubnetMetricsChartProps) {
           <SelectContent>
             {availableBlockchains.map(blockchain => (
               <SelectItem key={blockchain.name} value={blockchain.name}>
-                {blockchain.name} ({blockchain.subnetCount} subnets)
-                  </SelectItem>
+                {blockchain.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -346,7 +346,7 @@ export function SubnetMetricsChart({ subnet }: SubnetMetricsChartProps) {
 
       {/* Time Range Selector */}
         <div className="flex space-x-1">
-          {["1W", "1M", "3M", "6M", "1Y", "ALL"].map(range => (
+          {["1W", "30D", "3M", "6M", "1Y", "ALL"].map(range => (
             <Button
               key={range}
               size="sm"
@@ -383,6 +383,7 @@ export function SubnetMetricsChart({ subnet }: SubnetMetricsChartProps) {
                 dataKey="date" 
                 tickFormatter={formatDate}
                 tick={{ fontSize: 12 }}
+                interval={timeRange === "30D" ? Math.ceil(chartData.length / 2) - 1 : "preserveStartEnd"}
               />
               <YAxis 
                 tickFormatter={formatNumber}

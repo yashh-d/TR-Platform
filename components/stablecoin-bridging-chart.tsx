@@ -19,7 +19,7 @@ interface StablecoinData {
 
 export function StablecoinBridgingChart({ 
   network, 
-  title = "Total Bridged Stablecoins to Avalanche"
+  title = "Bridged Stablecoins to Avalanche"
 }: StablecoinBridgingChartProps) {
   const [timeRange, setTimeRange] = useState('1Y')
   const [stablecoinData, setStablecoinData] = useState<StablecoinData[]>([])
@@ -61,7 +61,8 @@ export function StablecoinBridgingChart({
             break
           case '1Y':
           default:
-            filterDate.setFullYear(currentDate.getFullYear() - 1)
+            // More reliable way to calculate 1 year ago
+            filterDate = new Date(currentDate.getFullYear() - 1, currentDate.getMonth(), currentDate.getDate())
             break
         }
         
@@ -135,7 +136,7 @@ export function StablecoinBridgingChart({
         mode: 'lines',
         name: 'Bridged USDT',
         line: {
-          color: '#26A17B',
+          color: '#00D4AA',
           width: 2
         }
       },

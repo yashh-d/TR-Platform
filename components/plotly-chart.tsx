@@ -95,7 +95,7 @@ export function PlotlyChart({ network, metric }: PlotlyChartProps) {
         
         // Select all columns that we need
         const selectColumns = ['date', 'timestamp']
-        availableMetrics.forEach(m => selectColumns.push(`"${m.id}"`))
+        availableMetrics.forEach(m => selectColumns.push(m.id))
         
         // Build the query with all columns
         let fetchedData: any[] = []

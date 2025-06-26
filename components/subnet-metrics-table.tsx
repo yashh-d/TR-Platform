@@ -53,14 +53,14 @@ export function SubnetMetricsTable({ maxBlockchains = 20 }: SubnetMetricsTablePr
     { key: 'blockchain_name' as SortField, label: 'Blockchain', format: (value: string | number) => String(value) },
     { key: 'activeAddresses' as SortField, label: 'Active Addresses', format: (value: string | number) => formatNumber(Number(value)) },
     { key: 'activeSenders' as SortField, label: 'Active Senders', format: (value: string | number) => formatNumber(Number(value)) },
+    { key: 'cumulativeAddresses' as SortField, label: 'Total Addresses', format: (value: string | number) => formatNumber(Number(value)) },
     { key: 'txCount' as SortField, label: 'Transactions', format: (value: string | number) => formatNumber(Number(value)) },
+    { key: 'cumulativeTxCount' as SortField, label: 'Total Txs', format: (value: string | number) => formatNumber(Number(value)) },
     { key: 'gasUsed' as SortField, label: 'Gas Used', format: (value: string | number) => formatNumber(Number(value)) },
     { key: 'feesPaid' as SortField, label: 'Fees Paid', format: (value: string | number) => formatCurrency(Number(value)) },
     { key: 'avgTps' as SortField, label: 'Avg TPS', format: (value: string | number) => Number(value).toFixed(2) },
     { key: 'maxTps' as SortField, label: 'Max TPS', format: (value: string | number) => Number(value).toFixed(2) },
-    { key: 'avgGasPrice' as SortField, label: 'Avg Gas Price', format: (value: string | number) => formatNumber(Number(value)) },
-    { key: 'cumulativeTxCount' as SortField, label: 'Total Txs', format: (value: string | number) => formatNumber(Number(value)) },
-    { key: 'cumulativeAddresses' as SortField, label: 'Total Addresses', format: (value: string | number) => formatNumber(Number(value)) }
+    { key: 'avgGasPrice' as SortField, label: 'Avg Gas Price', format: (value: string | number) => formatNumber(Number(value)) }
   ]
 
   // Fetch and aggregate blockchain metrics
@@ -153,7 +153,12 @@ export function SubnetMetricsTable({ maxBlockchains = 20 }: SubnetMetricsTablePr
               avgGasPrice: getMetricValue('avgGasPrice')
             }
           })
-          .filter(blockchain => blockchain.activeAddresses > 0) // Only show active blockchains
+          .filter(blockchain => 
+            blockchain.activeAddresses > 0 && // Only show active blockchains
+            !blockchain.blockchain_name.includes('P-Chain') && // Exclude P-Chain, X-Chain, C-Chain entries
+            !blockchain.blockchain_name.includes('X-Chain') &&
+            !blockchain.blockchain_name.includes('C-Chain')
+          )
           .slice(0, maxBlockchains)
 
         setTableData(blockchainMetrics)
@@ -223,7 +228,7 @@ export function SubnetMetricsTable({ maxBlockchains = 20 }: SubnetMetricsTablePr
     return (
       <Card className="p-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold">Blockchain Metrics Comparison</h3>
+          <h3 className="text-lg font-bold">Avalanche L1s Metrics Comparison</h3>
           <Button variant="outline" size="sm" className="text-xs">
             <Download className="h-3 w-3 mr-1" />
             Download
@@ -240,7 +245,7 @@ export function SubnetMetricsTable({ maxBlockchains = 20 }: SubnetMetricsTablePr
     return (
       <Card className="p-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold">Blockchain Metrics Comparison</h3>
+          <h3 className="text-lg font-bold">Avalanche L1s Metrics Comparison</h3>
           <Button variant="outline" size="sm" className="text-xs">
             <Download className="h-3 w-3 mr-1" />
             Download
@@ -259,15 +264,11 @@ export function SubnetMetricsTable({ maxBlockchains = 20 }: SubnetMetricsTablePr
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold">Blockchain Metrics Comparison</h3>
+        <h3 className="text-lg font-bold">Avalanche L1s Metrics Comparison</h3>
         <Button variant="outline" size="sm" className="text-xs">
           <Download className="h-3 w-3 mr-1" />
           Download
         </Button>
-      </div>
-      
-      <div className="text-sm text-gray-600 mb-4">
-        Showing top {maxBlockchains} blockchains by activity (last 7 days data). Click column headers to sort.
       </div>
 
       <div className="overflow-x-auto">

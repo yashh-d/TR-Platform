@@ -20,7 +20,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-import { multiSelectStyles } from "@/styles/custom-styles"
 
 // Dynamically import Plotly to avoid SSR issues
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false })
@@ -55,6 +54,9 @@ interface TVLData {
   tvl: number
 }
 
+type TimeRange = "1M" | "3M" | "6M" | "1Y"
+type ChartType = "individual" | "stacked" | "percentage"
+
 export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChartProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -62,8 +64,8 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
   const [selectedProtocols, setSelectedProtocols] = useState<string[]>([])
   const [protocolsOpen, setProtocolsOpen] = useState(false)
   const [protocolData, setProtocolData] = useState<TVLData[]>([])
-  const [timeRange, setTimeRange] = useState<"1M" | "3M" | "6M" | "1Y" | "ALL">("1Y")
-  const [chartType, setChartType] = useState<"individual" | "stacked" | "percentage">("individual")
+  const [timeRange, setTimeRange] = useState<TimeRange>("1Y")
+  const [chartType, setChartType] = useState<ChartType>("individual")
 
   // Get the normalized network name for the database
   const getNormalizedNetwork = (network: string): string => {
@@ -81,7 +83,7 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
       case "core":
         return "Core"
       default:
-        return "Avalanche" // Default to Avalanche
+        return "Avalanche"
     }
   }
 
@@ -105,7 +107,7 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
     }
   }
 
-  // Format large numbers with appropriate suffixes (K, M, B, T)
+  // Format large numbers with appropriate suffixes
   const formatLargeNumber = (num: number): string => {
     if (num >= 1e12) {
       return (num / 1e12).toFixed(2) + "T"
@@ -120,14 +122,11 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
     }
   }
 
-  // Helper function to format currency amounts
-  const formatCurrency = (amount: number): string => {
-    return `$${formatLargeNumber(amount)}`
-  }
-
-  // Helper function to calculate date range based on selected timeRange
-  const getDateRange = (): { startDate: Date; endDate: Date } => {
+  // Calculate date range based on selected timeRange
+  const getDateRange = (): { startDate: string; endDate: string } => {
     const endDate = new Date()
+    const endDateString = endDate.toISOString().split("T")[0]
+    
     let startDate = new Date()
 
     switch (timeRange) {
@@ -143,15 +142,15 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
       case "1Y":
         startDate.setFullYear(endDate.getFullYear() - 1)
         break
-      case "ALL":
-        startDate = new Date("2020-01-01") // Beginning of most protocol data
-        break
     }
 
-    return { startDate, endDate }
+    return {
+      startDate: startDate.toISOString().split("T")[0],
+      endDate: endDateString
+    }
   }
 
-  // Fetch all available protocols for the selected network
+  // Fetch available protocols for the selected network
   useEffect(() => {
     async function fetchAvailableProtocols() {
       if (!isSupabaseConfigured()) {
@@ -172,12 +171,23 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
         if (error) throw error
 
         if (data && data.length > 0) {
-          // Sort protocols by TVL in descending order (highest TVL first)
           const sortedProtocols = data.sort((a: any, b: any) => (b.current_tvl || 0) - (a.current_tvl || 0))
-          
           setAvailableProtocols(sortedProtocols.map((item: any) => item.protocol))
-          // Select top 5 protocols by default (or all if less than 5)
-          setSelectedProtocols(sortedProtocols.slice(0, Math.min(5, sortedProtocols.length)).map((item: any) => item.protocol))
+          
+          // Select default protocols (Aave and Benqi if available)
+          const defaultProtocols = sortedProtocols.filter((item: any) => {
+            const protocolName = item.protocol.toLowerCase()
+            return protocolName === 'aave' || 
+                   protocolName.startsWith('aave ') || 
+                   protocolName === 'benqi' || 
+                   protocolName.startsWith('benqi ')
+          }).map((item: any) => item.protocol)
+          
+          if (defaultProtocols.length > 0) {
+            setSelectedProtocols(defaultProtocols)
+          } else {
+            setSelectedProtocols(sortedProtocols.slice(0, Math.min(2, sortedProtocols.length)).map((item: any) => item.protocol))
+          }
         } else {
           setAvailableProtocols([])
           setSelectedProtocols([])
@@ -207,20 +217,40 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
         const normalizedNetwork = getNormalizedNetwork(network)
         const { startDate, endDate } = getDateRange()
 
-        // Fetch protocol-specific TVL data
+        console.log(`=== ${timeRange} BUTTON DEBUG ===`)
+        console.log("Start date:", startDate)
+        console.log("End date:", endDate)
+        console.log("Network:", normalizedNetwork)
+        console.log("Protocols:", selectedProtocols)
+
         const { data: protocolTVLData, error: protocolError } = await supabase.rpc(
           "get_protocol_tvl_history",
           {
             chain_param: normalizedNetwork,
             protocols: selectedProtocols,
-            start_date_param: startDate.toISOString().split("T")[0],
-            end_date_param: endDate.toISOString().split("T")[0],
+            start_date_param: startDate,
+            end_date_param: endDate,
           }
         )
 
-        if (protocolError) throw protocolError
+        if (protocolError) {
+          console.error(`${timeRange} button error:`, protocolError)
+          throw protocolError
+        }
 
-        setProtocolData(protocolTVLData as TVLData[])
+        console.log(`${timeRange} received data points:`, protocolTVLData?.length)
+
+        if (protocolTVLData) {
+          // Filter out any future dates and sort by date
+          const currentDate = new Date()
+          const filteredData = protocolTVLData
+            .filter((item: any) => new Date(item.date) <= currentDate)
+            .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+          
+          setProtocolData(filteredData as TVLData[])
+        } else {
+          setProtocolData([])
+        }
       } catch (err) {
         console.error("Failed to fetch TVL data:", err)
         setError("Failed to load TVL data. Please try again later.")
@@ -247,11 +277,9 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
       return groups
     }, {})
 
-    // Create an array of traces for individual protocols
     const traces: any[] = []
 
     if (chartType === "individual" || chartType === "stacked") {
-      // Add individual protocol traces
       Object.keys(protocolGroups).forEach((protocol, index) => {
         const protocolItems = protocolGroups[protocol]
         const color = PROTOCOL_COLORS[index % PROTOCOL_COLORS.length]
@@ -273,7 +301,7 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
         })
       })
     } else if (chartType === "percentage") {
-      // Create percentage traces - normalize each day to 100%
+      // Create percentage traces
       const dateGroups: Record<string, { protocol: string; tvl: number }[]> = {}
       
       protocolData.forEach(item => {
@@ -283,7 +311,6 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
         dateGroups[item.date].push({ protocol: item.protocol, tvl: item.tvl })
       })
       
-      // Calculate percentages for each date
       const percentageData: Record<string, { date: string, percentage: number }[]> = {}
       
       Object.entries(dateGroups).forEach(([date, protocols]) => {
@@ -301,7 +328,6 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
         })
       })
       
-      // Create stacked percentage area chart
       Object.keys(percentageData).forEach((protocol, index) => {
         const protocolItems = percentageData[protocol].sort((a, b) => 
           new Date(a.date).getTime() - new Date(b.date).getTime()
@@ -335,11 +361,13 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
       xaxis: {
         title: "Date",
         type: "date",
+        autorange: true,
       },
       yaxis: {
         title: chartType === "percentage" ? "Market Share (%)" : "Value Locked (USD)",
         tickformat: chartType === "percentage" ? ",.0f%" : "$,.0s",
         hoverformat: chartType === "percentage" ? ",.2f%" : "$,.2f",
+        autorange: true,
       },
       legend: {
         orientation: "h",
@@ -354,6 +382,7 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
         t: 40,
         pad: 4,
       },
+      showlegend: true,
     }
   }
 
@@ -487,12 +516,12 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
 
         {/* Time range selector */}
         <div className="flex space-x-1">
-          {["1M", "3M", "6M", "1Y", "ALL"].map((range) => (
+          {(["1M", "3M", "6M", "1Y"] as TimeRange[]).map((range) => (
             <Button
               key={range}
               size="sm"
               variant={timeRange === range ? "default" : "outline"}
-              onClick={() => setTimeRange(range as any)}
+              onClick={() => setTimeRange(range)}
               className="text-xs"
               style={{
                 backgroundColor: timeRange === range ? getNetworkColor(network) : "",
@@ -511,8 +540,12 @@ export function ProtocolTVLChart({ network, height = "400px" }: ProtocolTVLChart
             <Plot
               data={chartData}
               layout={chartLayout}
-              config={{ responsive: true, displayModeBar: true, displaylogo: false }}
+              config={{ 
+                responsive: true, 
+                displayModeBar: false
+              }}
               style={{ width: "100%", height: "100%" }}
+              useResizeHandler={true}
             />
           ) : (
             <div className="h-full flex items-center justify-center">

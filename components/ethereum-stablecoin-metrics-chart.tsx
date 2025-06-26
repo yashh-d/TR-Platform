@@ -155,7 +155,7 @@ export function EthereumStablecoinMetricsChart({
         mode: 'lines',
         name: 'USDT',
         line: {
-          color: '#26A17B', // Tether green
+          color: '#00D4AA', // Cyan/turquoise
           width: 2
         }
       })
@@ -167,7 +167,7 @@ export function EthereumStablecoinMetricsChart({
         mode: 'lines',
         name: 'USDC',
         line: {
-          color: '#2775CA', // USDC blue
+          color: '#2775CA', // Blue
           width: 2
         }
       })
@@ -192,7 +192,7 @@ export function EthereumStablecoinMetricsChart({
         mode: 'lines',
         name: 'Bridged USDT',
         line: {
-          color: '#26A17B', // Tether green
+          color: '#00D4AA', // Cyan/turquoise
           width: 2
         }
       })
@@ -204,7 +204,7 @@ export function EthereumStablecoinMetricsChart({
         mode: 'lines',
         name: 'Bridged USDC',
         line: {
-          color: '#2775CA', // USDC blue
+          color: '#2775CA', // Blue
           width: 2
         }
       })

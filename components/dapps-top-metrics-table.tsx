@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import React from "react"
 
 interface DAppMetric {
   id: string;
@@ -41,6 +42,12 @@ interface DAppsTopMetricsTableProps {
   maxHeight?: string;
 }
 
+interface RpcResponseItem {
+  metric_type: string;
+  metric_range: string;
+  filter_category: string;
+}
+
 export function DAppsTopMetricsTable({
   network,
   limit = 10,
@@ -52,104 +59,238 @@ export function DAppsTopMetricsTable({
   const [metricTypes, setMetricTypes] = useState<string[]>([])
   const [metricRanges, setMetricRanges] = useState<string[]>([])
   const [filterCategories, setFilterCategories] = useState<string[]>([])
-  const [selectedMetricType, setSelectedMetricType] = useState<string | null>(null)
-  const [selectedMetricRange, setSelectedMetricRange] = useState<string>("24h")
+  const [selectedMetricType, setSelectedMetricType] = useState<string | null>("volume")
+  const [selectedMetricRange, setSelectedMetricRange] = useState<string>("7d")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [debugInfo, setDebugInfo] = useState<string>("")
   
-  // Fetch filter options
+  // Simple test to check database connectivity
   useEffect(() => {
-    // Only fetch for Avalanche network
-    if (network.toLowerCase() !== "avalanche") {
-      setLoading(false)
-      return
-    }
-    
-    if (!isSupabaseConfigured()) {
-      setError("Supabase not configured properly")
-      setLoading(false)
-      return
-    }
-    
-    async function fetchFilterOptions() {
+    async function testDatabaseConnection() {
+      console.log("=== STARTING DATABASE TEST ===")
+      setDebugInfo("Testing database connection...")
+      
       try {
-        // Fetch metric types
-        const { data: metricTypeData, error: metricTypeError } = await supabase
-          .rpc('get_distinct_metric_types')
+        // Test 1: Check if Supabase is configured
+        console.log("1. Checking Supabase configuration...")
+        if (!isSupabaseConfigured()) {
+          const msg = "❌ Supabase is not configured"
+          console.log(msg)
+          setDebugInfo(msg)
+          setError("Supabase not configured")
+          setLoading(false)
+          return
+        }
+        console.log("✅ Supabase is configured")
         
-        if (metricTypeError) throw metricTypeError
-        setMetricTypes(metricTypeData.map(item => item.metric_type))
+        // Test 2: Try to connect to any table first
+        console.log("2. Testing basic database connection...")
+        setDebugInfo("Testing basic database connection...")
         
-        // If we have metric types, select the first one as default
-        if (metricTypeData.length > 0) {
-          setSelectedMetricType(metricTypeData[0].metric_type)
+        const { data: testData, error: testError } = await supabase
+          .from('avalanche_dapps_topmetrics')
+          .select('id')
+          .limit(1)
+        
+        console.log("Basic connection test result:", { testData, testError })
+        
+        if (testError) {
+          console.log("❌ Database connection failed:", testError)
+          setDebugInfo(`❌ Database error: ${testError.message}`)
+          setError(`Database connection failed: ${testError.message}`)
+          setLoading(false)
+          return
         }
         
-        // Fetch metric ranges
-        const { data: rangeData, error: rangeError } = await supabase
-          .rpc('get_distinct_metric_ranges')
+        console.log("✅ Database connection successful")
+        setDebugInfo("✅ Database connected, checking table...")
         
-        if (rangeError) throw rangeError
-        setMetricRanges(rangeData.map(item => item.metric_range))
+        // Test 3: Check if the table exists and has data
+        console.log("3. Checking table contents...")
+        const { data: tableData, error: tableError, count } = await supabase
+          .from('avalanche_dapps_topmetrics')
+          .select('*', { count: 'exact' })
+          .limit(3)
         
-        // Fetch filter categories
-        const { data: categoryData, error: categoryError } = await supabase
-          .rpc('get_distinct_filter_categories')
+        console.log("Table check result:", { tableData, tableError, count })
         
-        if (categoryError) throw categoryError
-        setFilterCategories(categoryData.map(item => item.filter_category))
+        if (tableError) {
+          console.log("❌ Table access failed:", tableError)
+          setDebugInfo(`❌ Table error: ${tableError.message}`)
+          setError(`Table access failed: ${tableError.message}`)
+          setLoading(false)
+          return
+        }
+        
+        if (!tableData || tableData.length === 0) {
+          console.log("⚠️ Table exists but is empty")
+          setDebugInfo(`⚠️ Table exists but is empty (${count || 0} rows)`)
+          setError("No data found in table")
+          setLoading(false)
+          return
+        }
+        
+        console.log('✅ Table has data:', tableData)
+        setDebugInfo(`✅ Found ${count} rows in table`)
+        
+        // Test 4: Check what columns are available
+        console.log("4. Checking available columns...")
+        if (tableData && tableData.length > 0) {
+          console.log("Available columns:", Object.keys(tableData[0]))
+          console.log("Sample row with all columns:", tableData[0])
+        }
+        
+        // Test 5: Extract available options
+        console.log("5. Extracting filter options...")
+        const availableMetricTypes = [...new Set(tableData.map(item => item.metric_type))].filter(Boolean)
+        const availableRanges = [...new Set(tableData.map(item => item.metric_range))].filter(Boolean)
+        const availableCategories = [...new Set(tableData.map(item => item.filter_category))].filter(Boolean)
+        
+        console.log("Available options:", {
+          metricTypes: availableMetricTypes,
+          ranges: availableRanges,
+          categories: availableCategories
+        })
+        
+        // Always include expected options, merge with database options
+        const expectedMetricTypes = ["volume", "transactions", "uaw", "balance"]
+        const expectedRanges = ["24h", "7d", "30d"]
+        
+        const allMetricTypes = [...new Set([...expectedMetricTypes, ...availableMetricTypes])]
+        const allRanges = [...new Set([...expectedRanges, ...availableRanges])]
+        
+        setMetricTypes(allMetricTypes)
+        setMetricRanges(allRanges)
+        setFilterCategories(availableCategories)
+        
+        // Set defaults
+        setSelectedMetricType("volume")
+        setSelectedMetricRange("7d")
+        
+        setDebugInfo(`✅ Ready! Found ${allMetricTypes.length} metric types, ${allRanges.length} ranges`)
+        setLoading(false)
         
       } catch (err) {
-        console.error('Error fetching filter options:', err)
-        setError('Failed to load filter options')
+        console.error("❌ Unexpected error:", err)
+        setDebugInfo(`❌ Unexpected error: ${err}`)
+        setError(`Unexpected error: ${err}`)
+        setLoading(false)
       }
     }
     
-    fetchFilterOptions()
+    if (network.toLowerCase() === "avalanche") {
+      testDatabaseConnection()
+    } else {
+      setLoading(false)
+    }
   }, [network])
   
   // Fetch metrics data based on selected filters
   useEffect(() => {
     // Only fetch for Avalanche network
     if (network.toLowerCase() !== "avalanche") {
-      setLoading(false)
       return
     }
     
     if (!isSupabaseConfigured()) {
-      setError("Supabase not configured properly")
-      setLoading(false)
       return
     }
     
     // Don't fetch if metric type isn't selected yet
-    if (!selectedMetricType && metricTypes.length > 0) return
+    if (!selectedMetricType) return
     
     async function fetchMetrics() {
       try {
         setLoading(true)
         
-        const { data, error: fetchError } = await supabase
-          .rpc('get_dapps_top_metrics', {
-            p_metric_type: selectedMetricType,
-            p_metric_range: selectedMetricRange,
-            p_filter_category: selectedCategory,
-            p_limit: limit
-          })
+        // Add debugging logs
+        console.log('=== FETCHING METRICS ===')
+        console.log('Fetching metrics with filters:', {
+          metric_type: selectedMetricType,
+          metric_range: selectedMetricRange,
+          filter_category: selectedCategory,
+          limit: limit
+        })
         
-        if (fetchError) throw fetchError
+        // First, get the latest capture_date
+        const { data: latestDateData, error: dateError } = await supabase
+          .from('avalanche_dapps_topmetrics')
+          .select('capture_date')
+          .order('capture_date', { ascending: false })
+          .limit(1)
+        
+        if (dateError) {
+          console.error('Date error:', dateError)
+          throw dateError
+        }
+        
+        if (!latestDateData || latestDateData.length === 0) {
+          console.log('No dates found in table')
+          setError('No data available')
+          setLoading(false)
+          return
+        }
+        
+        const latestDate = latestDateData[0].capture_date
+        console.log('Latest capture date:', latestDate)
+        
+        // Build the query
+        let query = supabase
+          .from('avalanche_dapps_topmetrics')
+          .select('*')
+          .eq('capture_date', latestDate)
+          .eq('metric_type', selectedMetricType)
+          .eq('metric_range', selectedMetricRange)
+        
+        // Apply category filter if selected
+        if (selectedCategory) {
+          query = query.eq('filter_category', selectedCategory)
+        }
+        
+        // Order by rank and limit results
+        query = query.order('rank', { ascending: true }).limit(limit)
+        
+        console.log('Executing query with filters:', {
+          capture_date: latestDate,
+          metric_type: selectedMetricType,
+          metric_range: selectedMetricRange,
+          filter_category: selectedCategory || 'none'
+        })
+        
+        const { data, error: fetchError } = await query
+        
+        if (fetchError) {
+          console.error('Query Error:', fetchError)
+          throw fetchError
+        }
+        
+        console.log('Query successful!')
+        console.log('Received data:', data)
+        console.log('Data length:', data?.length || 0)
+        
+        if (data && data.length > 0) {
+          console.log('First row sample:', data[0])
+          // Log percentage_change values specifically
+          console.log('Percentage changes in data:')
+          data.forEach((item, index) => {
+            console.log(`  ${index + 1}. ${item.name}: ${item.percentage_change} (type: ${typeof item.percentage_change})`)
+          })
+        }
         
         setMetrics(data as DAppMetric[])
         setError(null)
+        setDebugInfo(`✅ Loaded ${data?.length || 0} metrics for ${selectedMetricType} (${selectedMetricRange})`)
       } catch (err) {
         console.error('Error fetching metrics:', err)
-        setError('Failed to load metrics data')
+        setError(`Failed to load metrics data: ${err}`)
+        setDebugInfo(`❌ Failed to load metrics: ${err}`)
       } finally {
         setLoading(false)
       }
     }
     
     fetchMetrics()
-  }, [network, selectedMetricType, selectedMetricRange, selectedCategory, limit, metricTypes])
+  }, [selectedMetricType, selectedMetricRange, selectedCategory, limit, metricTypes])
   
   // Format value based on metric type
   const formatValue = (value: number | null, metricType: string): string => {
@@ -175,7 +316,7 @@ export function DAppsTopMetricsTable({
   }
   
   // Format percentage change
-  const formatPercentage = (percentage: number | null): JSX.Element => {
+  const formatPercentage = (percentage: number | null): React.JSX.Element => {
     if (percentage === null) return <span>-</span>
     
     const isPositive = percentage >= 0
@@ -285,7 +426,7 @@ export function DAppsTopMetricsTable({
     <div className="rounded-md border">
       {/* Filters */}
       <div className="p-4 border-b bg-gray-50">
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-4 items-center">
           {/* Metric Type Filter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Metric Type</label>
@@ -306,7 +447,12 @@ export function DAppsTopMetricsTable({
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="none">No metrics available</SelectItem>
+                    <>
+                      <SelectItem value="volume">Volume</SelectItem>
+                      <SelectItem value="transactions">Transactions</SelectItem>
+                      <SelectItem value="uaw">Unique Active Wallets</SelectItem>
+                      <SelectItem value="balance">Balance</SelectItem>
+                    </>
                   )}
                 </SelectGroup>
               </SelectContent>
@@ -317,7 +463,7 @@ export function DAppsTopMetricsTable({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Time Range</label>
             <Select 
-              value={selectedMetricRange || '24h'}
+              value={selectedMetricRange || '7d'}
               onValueChange={setSelectedMetricRange}
             >
               <SelectTrigger className="w-[180px]">
@@ -328,41 +474,22 @@ export function DAppsTopMetricsTable({
                   <SelectLabel>Time Ranges</SelectLabel>
                   {metricRanges.length > 0 ? (
                     metricRanges.map(range => (
-                      <SelectItem key={range} value={range || '24h'}>
-                        {range || '24h'}
+                      <SelectItem key={range} value={range || '7d'}>
+                        {range || '7d'}
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="24h">24h</SelectItem>
+                    <>
+                      <SelectItem value="24h">24h</SelectItem>
+                      <SelectItem value="7d">7d</SelectItem>
+                      <SelectItem value="30d">30d</SelectItem>
+                    </>
                   )}
                 </SelectGroup>
               </SelectContent>
             </Select>
           </div>
           
-          {/* Category Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <Select 
-              value={selectedCategory || 'all'}
-              onValueChange={(val) => setSelectedCategory(val === 'all' ? null : val)}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel>Categories</SelectLabel>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {filterCategories.map(category => (
-                    <SelectItem key={category} value={category || 'unknown'}>
-                      {category || 'Unknown'}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
       </div>
     

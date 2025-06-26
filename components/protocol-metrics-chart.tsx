@@ -77,26 +77,18 @@ interface MetricsData {
   revenue: number
 }
 
-interface TotalMetricsData {
-  date: string
-  total_fees: number
-  total_revenue: number
-}
-
 type MetricType = "fees" | "revenue" | "ratio"
 
 export function ProtocolMetricsChart({ network, height = "400px" }: ProtocolMetricsChartProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [availableProtocols, setAvailableProtocols] = useState<string[]>(AVAILABLE_PROTOCOLS)
-  const [selectedProtocols, setSelectedProtocols] = useState<string[]>(["AAVE V2", "GMX V1", "Uniswap V3", "SushiSwap"])
+  const [selectedProtocols, setSelectedProtocols] = useState<string[]>(["Total"])
   const [protocolsOpen, setProtocolsOpen] = useState(false)
   const [protocolData, setProtocolData] = useState<MetricsData[]>([])
-  const [totalMetricsData, setTotalMetricsData] = useState<TotalMetricsData[]>([])
   const [timeRange, setTimeRange] = useState<"1M" | "3M" | "6M" | "1Y" | "ALL">("1Y")
   const [chartType, setChartType] = useState<"individual" | "stacked" | "percentage">("individual")
   const [metricType, setMetricType] = useState<MetricType>("fees")
-  const [showTotal, setShowTotal] = useState(true)
 
   // Get network-specific color
   const getNetworkColor = (network: string): string => {
@@ -176,7 +168,6 @@ export function ProtocolMetricsChart({ network, height = "400px" }: ProtocolMetr
         console.log(`Generating sample metrics for ${selectedProtocols.length} protocols...`)
         
         const simulatedData: MetricsData[] = []
-        const totalsByDate: Record<string, {total_fees: number, total_revenue: number}> = {}
         
         // Generate daily data points for the selected date range
         let currentDate = new Date(startDate)
@@ -184,10 +175,9 @@ export function ProtocolMetricsChart({ network, height = "400px" }: ProtocolMetr
         
         while (currentDate.getTime() <= endDateValue) {
           const dateStr = currentDate.toISOString().split('T')[0]
-          totalsByDate[dateStr] = {total_fees: 0, total_revenue: 0}
           
-          // Generate data for ALL protocols for total calculation
-          availableProtocols.forEach((protocol, index) => {
+          // Generate data for selected protocols
+          selectedProtocols.forEach((protocol, index) => {
             // Base values that will grow over time with some randomness
             const daysSinceStart = Math.floor((currentDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
             const protocolFactor = (index % 5 + 1) * 0.5  // Different scales for different protocols
@@ -204,34 +194,19 @@ export function ProtocolMetricsChart({ network, height = "400px" }: ProtocolMetr
             const fees = baseFees * weekendFactor * randomVariation
             const revenue = baseRevenue * weekendFactor * randomVariation
             
-            // Only add to simulatedData if this protocol is selected for display
-            if (selectedProtocols.includes(protocol)) {
-              simulatedData.push({
-                date: dateStr,
-                protocol,
-                fees,
-                revenue
-              })
-            }
-            
-            // Always add to totals (for ALL protocols)
-            totalsByDate[dateStr].total_fees += fees
-            totalsByDate[dateStr].total_revenue += revenue
+            simulatedData.push({
+              date: dateStr,
+              protocol,
+              fees,
+              revenue
+            })
           })
           
           // Move to next day
           currentDate.setDate(currentDate.getDate() + 1)
         }
         
-        // Convert totals object to array for the chart
-        const totals = Object.entries(totalsByDate).map(([date, values]) => ({
-          date,
-          total_fees: values.total_fees,
-          total_revenue: values.total_revenue
-        })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        
         setProtocolData(simulatedData)
-        setTotalMetricsData(totals)
         
       } catch (err) {
         console.error("Failed to fetch/generate metrics data:", err)
@@ -320,26 +295,6 @@ export function ProtocolMetricsChart({ network, height = "400px" }: ProtocolMetr
               : "%{y:$,.2f}<extra>%{fullData.name}</extra>",
         })
       })
-
-      // Add total trace if selected and not showing ratio
-      if (showTotal && totalMetricsData.length > 0 && chartType === "individual" && metricType !== "ratio") {
-        const totalYValues = totalMetricsData.map((item) => 
-          metricType === "fees" ? item.total_fees : item.total_revenue
-        )
-
-        traces.push({
-          type: "scatter",
-          mode: "lines",
-          name: `Total ${metricType === "fees" ? "Fees" : "Revenue"}`,
-          x: totalMetricsData.map((item) => item.date),
-          y: totalYValues,
-          line: {
-            width: 3,
-            color: "#E84142", // Avalanche red
-          },
-          hovertemplate: "%{y:$,.2f}<extra>Total</extra>",
-        })
-      }
     } else if (chartType === "percentage") {
       // Create percentage traces - normalize each day to 100%
       const dateGroups: Record<string, { protocol: string; value: number }[]> = {}
@@ -609,7 +564,7 @@ export function ProtocolMetricsChart({ network, height = "400px" }: ProtocolMetr
           </div>
         </div>
 
-        {/* Metric type selector and total toggle */}
+        {/* Metric type selector */}
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <div className="flex space-x-1">
@@ -653,17 +608,6 @@ export function ProtocolMetricsChart({ network, height = "400px" }: ProtocolMetr
                 Rev/Fee Ratio
               </Button>
             </div>
-            
-            {chartType === "individual" && metricType !== "ratio" && (
-              <Button
-                size="sm"
-                variant={showTotal ? "default" : "outline"}
-                onClick={() => setShowTotal(!showTotal)}
-                className="text-xs"
-              >
-                {showTotal ? "Hide Total" : "Show Total"}
-              </Button>
-            )}
           </div>
 
           <div className="flex space-x-1">
@@ -692,7 +636,7 @@ export function ProtocolMetricsChart({ network, height = "400px" }: ProtocolMetr
             <Plot
               data={chartData}
               layout={chartLayout}
-              config={{ responsive: true, displayModeBar: true, displaylogo: false }}
+              config={{ responsive: true, displayModeBar: false }}
               style={{ width: "100%", height: "100%" }}
             />
           ) : (

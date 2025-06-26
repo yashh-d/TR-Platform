@@ -324,13 +324,13 @@ export function PriceChart({
     
     if (maxPrice >= 10000) {
       // For prices $10,000+, use K notation when appropriate
-      tickFormat = maxPrice >= 100000 ? ',.0f' : ',.2f'
+      tickFormat = maxPrice >= 100000 ? ',.0f' : ',.0f'  // Round to whole numbers
       leftMargin = 100 // Even more space for very large numbers
     } else if (maxPrice >= 1000) {
-      tickFormat = ',.2f'
+      tickFormat = ',.0f'  // Round to whole numbers for $1000+
       leftMargin = 80
     } else if (maxPrice >= 1) {
-      tickFormat = ',.4f'
+      tickFormat = ',.2f'  // Keep 2 decimal places for $1-$999
       leftMargin = 70
     } else {
       tickFormat = ',.6f'

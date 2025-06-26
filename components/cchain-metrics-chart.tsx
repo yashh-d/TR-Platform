@@ -1,8 +1,17 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { supabase, isSupabaseConfigured } from "@/lib/supabase"
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
+} from "recharts"
 
 interface CChainMetricsChartProps {
   network: string;
@@ -19,12 +28,12 @@ interface CChainData {
 const availableMetrics = [
   { id: "activeAddresses", label: "Active Addresses" },
   { id: "activeSenders", label: "Active Senders" },
+  { id: "txCount", label: "Transaction Count" },
   { id: "cumulativeTxCount", label: "Cumulative Tx Count" },
   { id: "cumulativeAddresses", label: "Cumulative Addresses" },
   { id: "cumulativeContracts", label: "Cumulative Contracts" },
   { id: "cumulativeDeployers", label: "Cumulative Deployers" },
   { id: "gasUsed", label: "Gas Used" },
-  { id: "txCount", label: "Transaction Count" },
   { id: "avgGps", label: "Avg GPS" },
   { id: "maxGps", label: "Max GPS" },
   { id: "avgTps", label: "Avg TPS" },
@@ -38,12 +47,11 @@ export function CChainMetricsChart({
   network, 
   height = "400px" 
 }: CChainMetricsChartProps) {
-  const [timeRange, setTimeRange] = useState<"7D" | "30D" | "3M" | "6M" | "1Y" | "ALL">("30D")
+  const [timeRange, setTimeRange] = useState<"7D" | "30D" | "3M" | "6M" | "1Y" | "ALL">("6M")
   const [activeMetric, setActiveMetric] = useState("activeAddresses")
   const [data, setData] = useState<CChainData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const chartRef = useRef<HTMLDivElement>(null)
 
   // Get network-specific colors
   const getNetworkColors = (network: string) => {
@@ -127,73 +135,21 @@ export function CChainMetricsChart({
     fetchCChainData()
   }, [activeMetric, timeRange])
 
-  // Create Plotly chart data
-  const createChartData = () => {
-    if (!data.length) return null
-
-    const lineColor = getNetworkColors(network)[0]
-    const metricInfo = availableMetrics.find(m => m.id === activeMetric)
-    const metricLabel = metricInfo ? metricInfo.label : activeMetric
-    
-    const traces: any[] = [{
-      x: data.map(d => d.date),
-      y: data.map(d => d.value),
-      type: 'scatter',
-      mode: 'lines',
-      name: metricLabel,
-      line: {
-        color: lineColor,
-        width: 2,
-        shape: 'spline'
-      },
-      hoverinfo: 'y+x'
-    }]
-
-    return {
-      data: traces,
-      layout: {
-        autosize: true,
-        margin: { l: 50, r: 20, t: 20, b: 50 },
-        xaxis: { 
-          gridcolor: "#e5e7eb",
-          type: 'date',
-          showgrid: true
-        },
-        yaxis: { 
-          title: metricLabel,
-          gridcolor: "#e5e7eb",
-          titlefont: { color: lineColor },
-          showgrid: true,
-          tickformat: activeMetric.includes('gas') || activeMetric.includes('fee') ? '.2s' : ',.0f'
-        },
-        plot_bgcolor: "white",
-        paper_bgcolor: "white",
-        hovermode: "closest",
-        colorway: [lineColor]
-      } as any,
-      config: {
-        responsive: true,
-        displayModeBar: false
-      }
-    }
+  // Format numbers for display
+  const formatNumber = (value: number): string => {
+    if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}B`
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`
+    if (value >= 1000) return `${(value / 1000).toFixed(1)}K`
+    return value.toFixed(0)
   }
 
-  // Effect to render the chart
-  useEffect(() => {
-    if (!loading && !error && data.length > 0 && chartRef.current) {
-      if (typeof window !== 'undefined' && window.Plotly) {
-        const chartData = createChartData()
-        if (chartData) {
-          window.Plotly.newPlot(
-            chartRef.current,
-            chartData.data,
-            chartData.layout,
-            chartData.config
-          )
-        }
-      }
-    }
-  }, [loading, error, data, timeRange, activeMetric, network])
+  // Format date for display
+  const formatDate = (dateStr: string): string => {
+    return new Date(dateStr).toLocaleDateString('en-US', { 
+      month: 'short',
+      day: 'numeric' 
+    })
+  }
 
   // Handle time range change
   const handleTimeRangeChange = (range: "7D" | "30D" | "3M" | "6M" | "1Y" | "ALL") => {
@@ -286,7 +242,33 @@ export function CChainMetricsChart({
       {/* Chart */}
       <div className="h-[300px]">
         {data.length > 0 ? (
-          <div ref={chartRef} className="w-full h-full"></div>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data} margin={{ top: 5, right: 20, left: 20, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <XAxis 
+                dataKey="date" 
+                tickFormatter={formatDate}
+                tick={{ fontSize: 12 }}
+                interval={timeRange === "30D" ? Math.ceil(data.length / 2) - 1 : "preserveStartEnd"}
+              />
+              <YAxis 
+                tickFormatter={formatNumber}
+                tick={{ fontSize: 12 }}
+              />
+              <Tooltip 
+                formatter={(value) => [formatNumber(Number(value)), availableMetrics.find(m => m.id === activeMetric)?.label || activeMetric]}
+                labelFormatter={(label) => new Date(String(label)).toLocaleDateString()}
+              />
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke={getNetworkColors(network)[0]}
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4, fill: getNetworkColors(network)[0] }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         ) : (
           <div className="h-full flex items-center justify-center">
             <div className="text-gray-500">No data available for selected metric</div>

@@ -29,6 +29,11 @@ export function OverviewNetworkMetricsCards({ network, colors }: OverviewNetwork
   const [currentData, setCurrentData] = useState<NetworkMetrics | null>(null)
   const [previousData, setPreviousData] = useState<NetworkMetrics | null>(null)
 
+  // Don't render for Core DAO - it has its own component
+  if (network.toLowerCase() === "core") {
+    return null
+  }
+
   // Fetch Total Staked data for Avalanche
   const fetchTotalStakedData = async (): Promise<{ current: number | null, previous: number | null }> => {
     if (network.toLowerCase() !== "avalanche") {

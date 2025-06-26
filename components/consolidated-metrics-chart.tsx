@@ -32,7 +32,7 @@ export function ConsolidatedMetricsChart({
   network, 
   height = "400px" 
 }: ConsolidatedMetricsChartProps) {
-  const [timeRange, setTimeRange] = useState('90')
+  const [timeRange, setTimeRange] = useState('365')
   const [metricType, setMetricType] = useState<MetricType>('tvl')
   const [priceData, setPriceData] = useState<PriceData[]>([])
   const [tvlData, setTvlData] = useState<TVLData[]>([])
